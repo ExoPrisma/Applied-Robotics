@@ -1,0 +1,6 @@
+devel_space: /home/shushi/Desktop/COMP514/Repositories/applied-robotics-f2024/keyboard_controller/devel
+install: false
+install_space: /home/shushi/Desktop/COMP514/Repositories/applied-robotics-f2024/keyboard_controller/install
+profile: default
+source_space: /home/shushi/Desktop/COMP514/Repositories/applied-robotics-f2024/keyboard_controller/src
+workspace: /home/shushi/Desktop/COMP514/Repositories/applied-robotics-f2024/keyboard_controller
