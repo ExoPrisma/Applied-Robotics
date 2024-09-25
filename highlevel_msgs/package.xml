@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<package>
+  <name>highlevel_msgs</name>
+  <version>0.6.4</version>
+  <description>Hight Levels Msgs</description>
+
+  <author email="shushi.huang@mail.mcgill.ca">Shushi Michael Huang</author>
+
+  <maintainer email="shushi.huang@mail.mcgill.ca">Shushi Michael Huang</maintainer>
+
+  <license>BSD</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>message_generation</build_depend> 
+ 	
+</package>
