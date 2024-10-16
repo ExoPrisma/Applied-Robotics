@@ -46,6 +46,7 @@ class ControllerNode
 			// Subscribers
 			joint_subscriber = node_handle.subscribe(joint_states_topic, 3, &ControllerNode::jointRateCallBack, this);
       pose_subscriber = node_handle.subscribe(reference_pose_topic, 3, &ControllerNode::referencePoseCallBack, this);
+			home_config_subscriber = node_handle.subscribe(reference_velocity_topic, 3, &ControllerNode::referenceVelocityCallBack, this);
 
 			// Publishers
 			pose_publisher = node_handle.advertise<geometry_msgs::Pose>(feedback_pose_topic, 3);
@@ -73,6 +74,7 @@ class ControllerNode
 		// Private subscribers/publishers
     ros::Subscriber joint_subscriber;
     ros::Subscriber pose_subscriber;
+		ros::Subscriber home_config_subscriber;
     ros::Publisher pose_publisher;
     ros::Publisher twist_publisher;
     ros::Publisher velocity_publisher;
@@ -85,7 +87,6 @@ class ControllerNode
 		double max_velocity;
 
 		bool with_redundancy;
-		bool set_start_joint = true;
 
 		std::string joint_states_topic, reference_pose_topic, reference_velocity_topic;
 		std::string feedback_pose_topic, feedback_twist_topic, joint_group_controller_command_topic;
@@ -93,7 +94,7 @@ class ControllerNode
 		// End effector joint ID 
 		int end_effector_id;
 	
-		Eigen::VectorXd home_joint_position;
+		Eigen::VectorXd secondary_joint_velocities;
 		Eigen::VectorXd joint_position;
 		geometry_msgs::Pose pose_msg;
  
@@ -102,12 +103,6 @@ class ControllerNode
     {
       joint_position = Eigen::Map<const Eigen::VectorXd>(msg->position.data(), msg->position.size());
 			
-			if (set_start_joint) 
-			{
-				home_joint_position = joint_position;
-				set_start_joint = false;
-			}
-
       Eigen::VectorXd joint_velocity = Eigen::Map<const Eigen::VectorXd>(msg->velocity.data(), msg->velocity.size());
 
 			computeKinematics(joint_position, joint_velocity);
@@ -217,8 +212,6 @@ class ControllerNode
 			Eigen::MatrixXd identity = Eigen::MatrixXd::Identity(jacobian.cols(), jacobian.cols());
   		Eigen::MatrixXd null_space_projector = identity - jacobian_pseudo_inv * jacobian_linear;
 
-			Eigen::VectorXd secondary_joint_velocities = home_joint_position - joint_position;
-
 			Eigen::VectorXd joint_velocities = primary_joint_velocities + (null_space_projector * secondary_joint_velocities);
 
       Eigen::VectorXd joint_positions = joint_position + (joint_velocities * (1.0 / publish_rate));
@@ -230,6 +223,11 @@ class ControllerNode
       }
 
       velocity_publisher.publish(joint_velocities_msg);
+		}
+
+		void referenceVelocityCallBack(const std_msgs::Float64MultiArray& msg)
+		{
+	    secondary_joint_velocities = Eigen::VectorXd::Map(msg.data.data(), msg.data.size());
 		}
 
 		// Get parameter helper functions
@@ -279,7 +277,7 @@ class ControllerNode
 			if (!node_handle.getParam("/controller/with_redundancy", with_redundancy))
 			{
 				ROS_WARN("With redundancy set to false.");
-				with_redundancy = true;
+				with_redundancy = false;
 				return 1;
 			}
 			return 0;
