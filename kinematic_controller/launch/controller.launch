@@ -1,0 +1,13 @@
+<launch>
+	<include file="$(find cubic_polynomial_planner)/launch/pose_planner.launch" />	
+	<include file="$(find potential_field_planner)/launch/joint_planner.launch" />
+
+	<param name="/joint_states_topic" value="/gen3/joint_states" />
+  <param name="/feedback_pose_topic" value="/gen3/feedback/pose" />
+  <param name="/feedback_twist_topic" value="/gen3/feedback/twist" />
+	<param name="/reference_pose_topic" value="/gen3/reference/pose" />
+	<param name="/reference_velocity_topic" value="/gen3/reference/velocity" />
+	<param name="/joint_group_controller_command_topic" value="/gen3/joint_group_position_controller/command" />
+
+  <node name="inverse_kinematic_controller" pkg="kinematic_controller" type="inverse_kinematic_controller" output="screen"></node>
+</launch>
