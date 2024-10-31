@@ -1,6 +1,6 @@
 <launch>
 		<param name="/joint_states_topic" value="/gen3/joint_states"/>
-		<param name="/reference_velocity_topic" value="/joint_planner/reference/velocity"/>		
-
+		<param name="/reference_position_topic" value="/gen3/reference/position"/>
+		<param name="/reference_velocity_topic" value="/gen3/reference/velocity"/>		
     <node name="joint_planner" pkg="potential_field_planner" type="joint_planner" output="screen"></node>
 </launch>

@@ -17,6 +17,7 @@ class JointPlannerNode
 			getPublisher();
 
 			joint_subscriber = node_handle.subscribe(joint_states_topic, 10, &JointPlannerNode::jointStatesCallback, this);
+			position_publisher = node_handle.advertise<std_msgs::Float64MultiArray>(reference_position_topic, 10);
       velocity_publisher = node_handle.advertise<std_msgs::Float64MultiArray>(reference_velocity_topic, 10);
 		}
 		
@@ -27,6 +28,11 @@ class JointPlannerNode
 
       while(ros::ok())
       {
+				if(received_feedback)
+        {
+					publishReferencePositionVelocity();
+        }
+
         ros::spinOnce();
         loop_rate.sleep();
       }
@@ -39,49 +45,54 @@ class JointPlannerNode
 
 		// Private subscriber/publisher
     ros::Subscriber joint_subscriber;
+		ros::Publisher position_publisher;
     ros::Publisher velocity_publisher;
 
 		// Private parameters
     double publish_rate;
     double k_att;
     double max_velocity;
+		std::vector<double> default_configurations;
 
-    std::vector<double> default_positions;
+    std::string joint_states_topic, reference_position_topic, reference_velocity_topic;
 
-    std::string joint_states_topic, reference_velocity_topic;
+		// Private variable
+    bool received_feedback = false;
+
+		// Reference configuration
+		Eigen::VectorXd current_configurations;
+		Eigen::VectorXd target_configurations;
 
 		// Joint state callback
     void jointStatesCallback(const sensor_msgs::JointState::ConstPtr& msg)
     {
+      current_configurations = Eigen::Map<const Eigen::VectorXd>(msg->position.data(), msg->position.size());
 
-      Eigen::VectorXd joint_position = Eigen::Map<const Eigen::VectorXd>(msg->position.data(), msg->position.size());
-      Eigen::VectorXd default_position = Eigen::Map<const Eigen::VectorXd>(default_positions.data(), default_positions.size());
-
-      if (msg->position.size() != default_positions.size())
-      {
-        ROS_WARN("Position size does not match default positions size!");
-        return;
-      }
-			
-			computePotentialField(joint_position, default_position);
+			received_feedback = true;
     }
 
-		void computePotentialField(const Eigen::VectorXd& joint_position, const Eigen::VectorXd& default_position)
-		{
-      std_msgs::Float64MultiArray velocity_msg;
-			
-      Eigen::VectorXd v_ref = k_att * (default_position - joint_position);
+		void publishReferencePositionVelocity()
+		{	
+      Eigen::VectorXd q_ref = k_att * (target_configurations - current_configurations);
 
-      for (int i = 0; i < v_ref.size(); ++i) {
-        if (std::abs(v_ref(i)) > max_velocity) {
-            ROS_INFO("Joint %d velocity exceeded limit: %f", i, v_ref(i));
-            v_ref(i) = std::copysign(max_velocity, v_ref(i));
-        }
+			Eigen::VectorXd joint_velocity = q_ref;
+			if (q_ref.norm() > max_velocity)
+      {
+        joint_velocity = q_ref * (max_velocity / q_ref.norm());
       }
 
-      Eigen::VectorXd joint_velocity = joint_position + (v_ref * (1.0 / publish_rate));
+			Eigen::VectorXd joint_position = current_configurations + (q_ref * (1.0/publish_rate));
 
-      velocity_msg.data.resize(joint_velocity.size());
+      std_msgs::Float64MultiArray position_msg;
+			position_msg.data.resize(joint_position.size());
+      for (size_t i = 0; i < joint_position.size(); ++i) {
+        position_msg.data[i] = joint_position[i];
+      }
+
+			position_publisher.publish(position_msg);
+
+      std_msgs::Float64MultiArray velocity_msg;
+			velocity_msg.data.resize(joint_velocity.size());
       for (size_t i = 0; i < joint_velocity.size(); ++i) {
         velocity_msg.data[i] = joint_velocity[i];
       }
@@ -123,11 +134,12 @@ class JointPlannerNode
 
 		int getDefaultJoint()
 		{
-			if (!node_handle.getParam("/gen3/joint/default", default_positions))
+			if (!node_handle.getParam("/gen3/joint/default", default_configurations))
 			{
 				ROS_WARN("Default joints not set.");
 				return 1;
-			}
+			}			
+      target_configurations = Eigen::Map<const Eigen::VectorXd>(default_configurations.data(), default_configurations.size());
 			return 0;
 		}
 	
@@ -145,13 +157,18 @@ class JointPlannerNode
 
     int getPublisher()
     {
+			if (!node_handle.getParam("/reference_position_topic", reference_position_topic))
+      {
+        ROS_WARN("Reference position topic not set. Using default.");
+				reference_position_topic  = "/gen3/reference/position";
+        return 1;
+      }
       if (!node_handle.getParam("/reference_velocity_topic", reference_velocity_topic))
       {
         ROS_WARN("Reference velocity topic not set. Using default.");
-        joint_states_topic = "reference_velocity_topic";
+        reference_velocity_topic = "/gen3/reference/velocity";
         return 1;
       }
-
       return 0;
     }
 

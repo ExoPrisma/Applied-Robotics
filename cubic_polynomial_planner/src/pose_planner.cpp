@@ -98,7 +98,7 @@ class PlannerNode
       current_pose = *msg;
     }
 
-		// 
+		// Publish pose & twist
 		void publishPoseTwist()
     {
       double current_time = ros::Time::now().toSec();

@@ -41,7 +41,7 @@ class ControllerNode
 			pinocchio::urdf::buildModel(urdf_filename, model);
       data = pinocchio::Data(model);
 
-			end_effector_id = model.nv;
+			end_effector_id = model.getJointId("bracelet_link") - 1;
 
 			// Subscribers
 			joint_subscriber = node_handle.subscribe(joint_states_topic, 3, &ControllerNode::jointRateCallBack, this);
@@ -94,9 +94,12 @@ class ControllerNode
 		// End effector joint ID 
 		int end_effector_id;
 	
+		// Feedback pose & twist
+		geometry_msgs::Pose pose_msg;
+  	geometry_msgs::Twist twist_msg;
+
 		Eigen::VectorXd secondary_joint_velocities;
 		Eigen::VectorXd joint_position;
-		geometry_msgs::Pose pose_msg;
  
 		// Joint Rate callback function
 		void jointRateCallBack(const sensor_msgs::JointState::ConstPtr& msg)
@@ -116,10 +119,6 @@ class ControllerNode
 
       // Compute the end-effector pose and twist
       pinocchio::SE3 end_effector_pose = data.oMi[end_effector_id];
-      pinocchio::Motion end_effector_twist = data.v[end_effector_id];
-
-			// Feedback pose & twist
-  	  geometry_msgs::Twist twist_msg;
 
       // Set pose
       pose_msg.position.x = end_effector_pose.translation().x();
@@ -130,11 +129,20 @@ class ControllerNode
         pose_msg.position.x,
         pose_msg.position.y,
         pose_msg.position.z);
+			
+			pose_publisher.publish(pose_msg);
 
 			// Set twist
-      twist_msg.linear.x = end_effector_twist.linear().x();
-      twist_msg.linear.y = end_effector_twist.linear().y();
-      twist_msg.linear.z = end_effector_twist.linear().z();
+      Eigen::MatrixXd jacobian(6, 7);
+
+      pinocchio::getJointJacobian(model, data, end_effector_id, pinocchio::ReferenceFrame::LOCAL_WORLD_ALIGNED, jacobian);
+      Eigen::MatrixXd jacobian_linear = jacobian.topRows<3>();
+
+      Eigen::VectorXd end_effector_twist = jacobian_linear * joint_velocity;
+			
+      twist_msg.linear.x = end_effector_twist[0];
+      twist_msg.linear.y = end_effector_twist[1];
+      twist_msg.linear.z = end_effector_twist[2];
 
 			ROS_INFO("Twist Position - x: %f, y: %f, z: %f",
 				twist_msg.linear.x,
