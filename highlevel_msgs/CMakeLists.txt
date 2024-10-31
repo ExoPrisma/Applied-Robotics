@@ -15,6 +15,7 @@ find_package(catkin REQUIRED
 add_service_files(
 	FILES 
 	MoveTo.srv
+	SetKD.srv
 )
 
 generate_messages(DEPENDENCIES )
