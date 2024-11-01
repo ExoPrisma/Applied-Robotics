@@ -22,7 +22,7 @@ catkin_package(
   DEPENDS
     roscpp
     std_msgs
-    highlevel_msgs 
+    highlevel_msgs
 )
 
 include_directories(

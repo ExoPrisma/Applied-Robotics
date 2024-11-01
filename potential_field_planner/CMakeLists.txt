@@ -5,6 +5,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
   sensor_msgs
+	cubic_polynomial_planner
 )
 
 find_package(Eigen3 REQUIRED)
@@ -19,6 +20,7 @@ catkin_package(
 		roscpp 
 		std_msgs 
 		sensor_msgs
+		cubic_polynomial_planner
 )
 
 include_directories(

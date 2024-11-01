@@ -3,6 +3,8 @@
 #include <sensor_msgs/JointState.h>
 #include <std_msgs/Float64MultiArray.h>
 
+#include <sstream>
+
 class JointPlannerNode
 {
 	public:
@@ -15,8 +17,11 @@ class JointPlannerNode
 			getDefaultJoint();
 			getSubscriber();
 			getPublisher();
-
+			
+			// Subscriber
 			joint_subscriber = node_handle.subscribe(joint_states_topic, 10, &JointPlannerNode::jointStatesCallback, this);
+			
+			// Publisher
 			position_publisher = node_handle.advertise<std_msgs::Float64MultiArray>(reference_position_topic, 10);
       velocity_publisher = node_handle.advertise<std_msgs::Float64MultiArray>(reference_velocity_topic, 10);
 		}

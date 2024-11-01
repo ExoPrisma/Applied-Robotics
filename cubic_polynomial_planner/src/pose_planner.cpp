@@ -11,12 +11,13 @@ class PlannerNode
 		PlannerNode()
 		{
 			getPublishRate();
+			getDefaultTranslation();
 			getSubscriber();
 			getPublisher();
 
-			pose_subscriber = node_handle.subscribe(feedback_pose_topic, 3, &PlannerNode::poseCallBack, this);
+			pose_subscriber = node_handle.subscribe(feedback_pose_topic, 3, &PlannerNode::poseCallback, this);
 
-      move_to_server = node_handle.advertiseService("/pose_planner/move_to", &PlannerNode::moveToCallBack, this);
+      move_to_server = node_handle.advertiseService("/pose_planner/move_to", &PlannerNode::moveToCallback, this);
 
       pose_publisher = node_handle.advertise<geometry_msgs::Pose>(reference_pose_topic, 3);
       twist_publisher = node_handle.advertise<geometry_msgs::Twist>(reference_twist_topic, 3);
@@ -29,6 +30,19 @@ class PlannerNode
 
       while(ros::ok())
       {
+				if (!is_initialized)
+				{
+					pose_publisher.publish(current_pose);
+					ROS_INFO("Published default pose: [%f, %f, %f] with orientation [%f, %f, %f, %f]",
+        		current_pose.position.x,
+        		current_pose.position.y,
+        		current_pose.position.z,
+        		current_pose.orientation.x,
+        		current_pose.orientation.y,
+        		current_pose.orientation.z,
+        		current_pose.orientation.w);
+				}
+
         while(is_moving)
         {
           publishPoseTwist();
@@ -39,7 +53,7 @@ class PlannerNode
       }
     }
 		
-		bool moveToCallBack(highlevel_msgs::MoveTo::Request &req,
+		bool moveToCallback(highlevel_msgs::MoveTo::Request &req,
                         highlevel_msgs::MoveTo::Response &res)
     {
 
@@ -58,6 +72,7 @@ class PlannerNode
 
       start_time = ros::Time::now().toSec();
 
+			is_initialized = true;
       is_moving = true;
 
       ROS_INFO("Received call back");
@@ -79,21 +94,25 @@ class PlannerNode
 
 		// Private parameters
 		double publish_rate;
+		std::vector<double> default_translation;
 
-    std::string feedback_pose_topic, reference_pose_topic, reference_twist_topic;
+		std::string default_translation_topic;
+    std::string feedback_pose_topic;
+		std::string reference_pose_topic, reference_twist_topic;
 
 		// Private variables
 		double start_time;
     double target_time;
 
     bool is_moving = false;
+		bool is_initialized = false;
 
 		// Reference pose
 		geometry_msgs::Pose current_pose;
-    geometry_msgs::Pose final_pose;
-		
-		// Pose callback function
-		void poseCallBack(const geometry_msgs::Pose::ConstPtr& msg)
+    geometry_msgs::Pose final_pose;	
+
+		// Pose callback
+		void poseCallback(const geometry_msgs::Pose::ConstPtr& msg)
     {
       current_pose = *msg;
     }
@@ -126,7 +145,6 @@ class PlannerNode
 
       double twist_polynomial = ((6 * t) / (target_time * target_time)) - ((6 * t * t) / (target_time * target_time * target_time));
       Eigen::VectorXd target_twist = twist_polynomial * (end_pose - start_pose);
-
 
       geometry_msgs::Pose published_pose = current_pose;
       published_pose.position.x = target_pose[0];
@@ -169,10 +187,32 @@ class PlannerNode
       }
 			return 0;
 		}
+
+		int getDefaultTranslation()
+		{
+			if (!node_handle.getParam("/default_translation_topic", default_translation_topic))
+      {
+        ROS_WARN("Default translation topic not set. Using default.");
+        default_translation_topic = "/gen3/linear/default";
+        return 1;
+      }
+
+			if (!node_handle.getParam(default_translation_topic, default_translation))
+			{
+				ROS_WARN("Couldn't retrieve default translation. Using default.");
+				default_translation = {0.0, 0.0, 0.0};
+				return 1;
+			}
+			current_pose.position.x = default_translation[0];
+			current_pose.position.y = default_translation[1];
+			current_pose.position.z = default_translation[2];
+
+      return 0;
+		}
 		
 		int getSubscriber()
 		{
-			 if (!node_handle.getParam("feedback_pose_topic", feedback_pose_topic))
+			if (!node_handle.getParam("/feedback_pose_topic", feedback_pose_topic))
       {
         ROS_WARN("Feedback pose topic not set. Using default.");
         feedback_pose_topic = "/gen3/feedback/pose";
@@ -183,13 +223,13 @@ class PlannerNode
 		
 		int getPublisher()
 		{
-			if (!node_handle.getParam("reference_pose_topic", reference_pose_topic))
+			if (!node_handle.getParam("/reference_pose_topic", reference_pose_topic))
       {
         ROS_WARN("Reference pose topic not set. Using default.");
         reference_pose_topic = "/gen3/reference/pose";
 				return 1;
       }
-      if (!node_handle.getParam("reference_twist_topic", reference_twist_topic))
+      if (!node_handle.getParam("/reference_twist_topic", reference_twist_topic))
       {
         ROS_WARN("Reference twist topic not set. Using default.");
         reference_twist_topic = "/gen3/reference/twist";

@@ -1,15 +1,14 @@
 <launch>
-	<include file="$(find cubic_polynomial_planner)/launch/pose_planner.launch" />	
+	<include file="$(find cubic_polynomial_planner)/launch/pose_planner.launch" />
 	<include file="$(find potential_field_planner)/launch/joint_planner.launch" />
 
-	<param name="/stiffness" value="10" />
-	<param name="/damping" value="0.1" />
+	<param name="/stiffness" value="60" />
+	<param name="/damping" value="10" />
 
 	<param name="/joint_states_topic" value="/gen3/joint_states" />
-	<param name="/reference_position_topic" value="/gen3/reference/pose" />
+	<param name="/reference_position_topic" value="/gen3/reference/position" />
 	<param name="/reference_velocity_topic" value="/gen3/reference/velocity" />
 	<param name="/joint_group_controller_command" value="/gen3/joint_group_effort_controller/command" />
 
   <node name="joint_controller" pkg="dynamic_controller" type="joint_controller" output="screen"></node>
 </launch>
-

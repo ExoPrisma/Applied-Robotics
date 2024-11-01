@@ -14,6 +14,7 @@
   <depend>roscpp</depend>
   <depend>std_msgs</depend>
   <depend>sensor_msgs</depend>
+  <depend>cubic_polynomial_planner</depend>
 
 	<build_depend>eigen3</build_depend>
 
