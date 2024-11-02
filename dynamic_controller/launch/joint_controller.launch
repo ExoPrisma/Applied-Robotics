@@ -8,6 +8,7 @@
 	<param name="/joint_states_topic" value="/gen3/joint_states" />
 	<param name="/reference_position_topic" value="/gen3/reference/position" />
 	<param name="/reference_velocity_topic" value="/gen3/reference/velocity" />
+
 	<param name="/joint_group_controller_command" value="/gen3/joint_group_effort_controller/command" />
 
   <node name="joint_controller" pkg="dynamic_controller" type="joint_controller" output="screen"></node>

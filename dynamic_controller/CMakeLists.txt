@@ -47,3 +47,5 @@ include_directories(
 add_executable(joint_controller src/joint_controller.cpp)
 target_link_libraries(joint_controller ${catkin_LIBRARIES} ${PINOCCHIO_LIBRARIES})
 
+add_executable(pose_controller src/pose_controller.cpp)
+target_link_libraries(pose_controller ${catkin_LIBRARIES} ${PINOCCHIO_LIBRARIES})

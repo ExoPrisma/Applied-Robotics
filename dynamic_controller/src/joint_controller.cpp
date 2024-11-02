@@ -120,6 +120,9 @@ class ControllerNode
 		bool received_reference_position = false;
 		bool received_reference_velocity = false;
 
+		Eigen::MatrixXd M = Eigen::MatrixXd::Identity(dim_joints,dim_joints) ;
+		Eigen::VectorXd h = Eigen::VectorXd::Zero(dim_joints) ;
+
 		Eigen::VectorXd q_fbk;
 		Eigen::VectorXd q_dot_fbk;
 		Eigen::VectorXd q_ref;
@@ -133,6 +136,8 @@ class ControllerNode
 			q_dot_fbk = Eigen::Map<const Eigen::VectorXd>(msg->velocity.data(), msg->velocity.size());	
 		
 			pinocchio::computeAllTerms(model, data, q_fbk, q_dot_fbk);
+			M  = data.M;
+			h  = data.nle;
 			
 			received_feedback = true;
 		}
@@ -153,10 +158,7 @@ class ControllerNode
 		
 		// Publish 
 		void publishTorque() 
-		{
-			Eigen::MatrixXd M = Eigen::MatrixXd::Identity(dim_joints,dim_joints) ;
-			Eigen::VectorXd h = Eigen::VectorXd::Zero(dim_joints) ;
-	
+		{	
 			Eigen::VectorXd q_dot2_cmd = (d * (q_dot_ref - q_dot_fbk)) + (k * (q_ref - q_fbk));
 
 			Eigen::VectorXd tau_cmd = (M * q_dot2_cmd) + h;
