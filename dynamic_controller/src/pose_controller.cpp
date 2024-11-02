@@ -17,8 +17,8 @@
 #include <sensor_msgs/JointState.h>
 #include <std_msgs/Float64MultiArray.h>
 
-// Controller Class
-class ControllerNode
+// Control Class
+class ControlNode
 {
 	public:
 	
@@ -26,7 +26,7 @@ class ControllerNode
     pinocchio::Model model;
     pinocchio::Data data;
 
-		ControllerNode()
+		ControlNode()
 		{
 			if (!getURDF()) return;
 
@@ -46,15 +46,15 @@ class ControllerNode
 			dim_joints = model.nq;
 
 			// Subscribers
-			feedback_subscriber = node_handle.subscribe(joint_states_topic, 3, &ControllerNode::feedbackCallback, this);
-    	pose_subscriber = node_handle.subscribe(reference_pose_topic, 3, &ControllerNode::referencePoseCallback, this);
-    	twist_subscriber = node_handle.subscribe(reference_twist_topic, 3, &ControllerNode::referenceTwistCallback, this);
-    	position_subscriber = node_handle.subscribe(reference_position_topic, 3, &ControllerNode::referencePositionCallback, this);
-    	velocity_subscriber = node_handle.subscribe(reference_velocity_topic, 3, &ControllerNode::referenceVelocityCallback, this);
+			feedback_subscriber = node_handle.subscribe(joint_states_topic, 3, &ControlNode::feedbackCallback, this);
+    	pose_subscriber = node_handle.subscribe(reference_pose_topic, 3, &ControlNode::referencePoseCallback, this);
+    	twist_subscriber = node_handle.subscribe(reference_twist_topic, 3, &ControlNode::referenceTwistCallback, this);
+    	position_subscriber = node_handle.subscribe(reference_position_topic, 3, &ControlNode::referencePositionCallback, this);
+    	velocity_subscriber = node_handle.subscribe(reference_velocity_topic, 3, &ControlNode::referenceVelocityCallback, this);
 
 			// Servers
-			set_joint_server = node_handle.advertiseService("/joint_controller/set_joint_pd", &ControllerNode::setJointPDCallback, this);		
-			set_effector_server = node_handle.advertiseService("/joint_controller/set_linear_pd", &ControllerNode::setEffectorPDCallback, this);		
+			set_joint_server = node_handle.advertiseService("/joint_controller/set_joint_pd", &ControlNode::setJointPDCallback, this);		
+			set_effector_server = node_handle.advertiseService("/joint_controller/set_linear_pd", &ControlNode::setEffectorPDCallback, this);		
 
 			// Publishers
     	pose_publisher = node_handle.advertise<geometry_msgs::Pose>(feedback_pose_topic, 3);
@@ -210,6 +210,37 @@ class ControllerNode
 			h  = data.nle;
 			
 			received_feedback = true;
+
+			// Compute the end-effector pose and twist
+			geometry_msgs::Pose pose_msg;
+	    geometry_msgs::Twist twist_msg;
+      pinocchio::SE3 end_effector_pose = data.oMi[end_effector_id];
+
+      // Set pose
+      pose_msg.position.x = end_effector_pose.translation().x();
+      pose_msg.position.y = end_effector_pose.translation().y();
+      pose_msg.position.z = end_effector_pose.translation().z();
+
+      ROS_INFO("Pose Position - x: %f, y: %f, z: %f",
+        pose_msg.position.x,
+        pose_msg.position.y,
+        pose_msg.position.z);
+
+      pose_publisher.publish(pose_msg);
+
+      // Set twist
+      Eigen::VectorXd end_effector_twist = J * q_dot_fbk;
+
+      twist_msg.linear.x = end_effector_twist[0];
+      twist_msg.linear.y = end_effector_twist[1];
+      twist_msg.linear.z = end_effector_twist[2];
+
+      ROS_INFO("Twist Position - x: %f, y: %f, z: %f",
+        twist_msg.linear.x,
+        twist_msg.linear.y,
+        twist_msg.linear.z);
+
+      twist_publisher.publish(twist_msg);
 		}
 
 		// Reference pose callback
@@ -247,21 +278,32 @@ class ControllerNode
 			if (with_redundancy)
 			{
 				publishTorqueWithRedundancy();
+				ROS_INFO("Published torque with redundancy");
 			}
 			else
 			{
 				publishTorqueWithoutRedundancy();
+				ROS_INFO("Published torque without redundancy");
 			}
 		}
 
 		void publishTorqueWithoutRedundancy()
 		{
-			Eigen::MatrixXd wedge = computeWedge();
-      Eigen::MatrixXd bias = computeBias(wedge);
+			Eigen::VectorXd tau_cmd = Eigen::VectorXd(dim_joints);			
 
-      Eigen::VectorXd x_dot2_cmd = computeXDot2Command();
+			try
+			{
+				Eigen::MatrixXd wedge = computeWedge();
+      	Eigen::MatrixXd bias = computeBias(wedge);
 
-			Eigen::VectorXd tau_cmd = J_transpose * ((wedge * x_dot2_cmd) + bias);
+      	Eigen::VectorXd x_dot2_cmd = computeXDot2Command();
+
+				Eigen::VectorXd tau_cmd = J_transpose * ((wedge * x_dot2_cmd) + bias);
+			} catch (const std::exception &e)
+			{
+				ROS_WARN("Matrix computation failed: %s", e.what());
+				return;
+			}
 
 			std_msgs::Float64MultiArray torque_msg;
       torque_msg.data.resize(tau_cmd.size());
@@ -275,18 +317,27 @@ class ControllerNode
 		// Publish 
 		void publishTorqueWithRedundancy() 
 		{	
-			Eigen::MatrixXd wedge = computeWedge();	
-			Eigen::MatrixXd bias = computeBias(wedge);
-			Eigen::VectorXd x_dot2_cmd = computeXDot2Command();
+			Eigen::VectorXd tau_total = Eigen::VectorXd(dim_joints);
 
-			Eigen::VectorXd tau_cmd = J_transpose * ((wedge * x_dot2_cmd) + bias);
+			try 
+			{
+				Eigen::MatrixXd wedge = computeWedge();	
+				Eigen::MatrixXd bias = computeBias(wedge);
+				Eigen::VectorXd x_dot2_cmd = computeXDot2Command();
 
-			Eigen::VectorXd P = I - (J_transpose * (J * M_inverse * J_transpose).inverse() * J * M_inverse);
-			Eigen::VectorXd tau_joint = computeTauJoint();
+				Eigen::VectorXd tau_cmd = J_transpose * ((wedge * x_dot2_cmd) + bias);
 
-			Eigen::VectorXd tau_null = P * tau_joint;
+				Eigen::VectorXd P = I - (J_transpose * (J * M_inverse * J_transpose).inverse() * J * M_inverse);
+				Eigen::VectorXd tau_joint = computeTauJoint();
 
-			Eigen::VectorXd tau_total = tau_cmd + tau_null;
+				Eigen::VectorXd tau_null = P * tau_joint;
+
+				Eigen::VectorXd tau_total = tau_cmd + tau_null;
+			} catch (const std::exception &e)
+			{
+				ROS_WARN("Matrix operation failed: %s", e.what());
+				return;
+			}
 
 			std_msgs::Float64MultiArray torque_msg;
 			torque_msg.data.resize(tau_total.size());
@@ -312,7 +363,6 @@ class ControllerNode
 		Eigen::VectorXd computeXDot2Command()
 		{
 			Eigen::VectorXd x_dot2_cmd = (d_effector * (x_dot_ref - x_dot_fbk)) + (k_effector * (x_ref - x_fbk));
-
 			return x_dot2_cmd;
 		}
 
@@ -456,7 +506,7 @@ int main(int argc, char** argv)
 {
   ros::init(argc, argv, "pose_controller");
 
-  ControllerNode controller;
+  ControlNode controller;
   controller.run();
 
   return 0;
