@@ -174,15 +174,15 @@ class ControlNode
 		Eigen::MatrixXd J_transpose_pseudo = Eigen::MatrixXd::Zero(3, dim_joints);
 		Eigen::MatrixXd J_dot = Eigen::MatrixXd::Zero(3, dim_joints);
 
-		Eigen::VectorXd q_fbk;
-		Eigen::VectorXd q_dot_fbk;
-		Eigen::VectorXd q_ref = Eigen::VectorXd::Zero(3);
-		Eigen::VectorXd q_dot_ref = Eigen::VectorXd::Zero(3);
+		Eigen::VectorXd q_fbk = Eigen::VectorXd::Zero(7);
+		Eigen::VectorXd q_dot_fbk = Eigen::VectorXd::Zero(7);
+		Eigen::VectorXd q_ref = Eigen::VectorXd::Zero(7);
+		Eigen::VectorXd q_dot_ref = Eigen::VectorXd::Zero(7);
 
-		Eigen::VectorXd x_fbk;
-		Eigen::VectorXd x_dot_fbk;
-		Eigen::VectorXd x_ref;
-		Eigen::VectorXd x_dot_ref;
+		Eigen::VectorXd x_fbk = Eigen::VectorXd::Zero(3);
+		Eigen::VectorXd x_dot_fbk = Eigen::VectorXd::Zero(3);
+		Eigen::VectorXd x_ref = Eigen::VectorXd::Zero(3);
+		Eigen::VectorXd x_dot_ref = Eigen::VectorXd::Zero(3);
 
 		// Feedback callback
 		void feedbackCallback(const sensor_msgs::JointState::ConstPtr& msg)
@@ -212,21 +212,25 @@ class ControlNode
 			received_feedback = true;
 			ROS_INFO("Joint: %d", dim_joints);
 			ROS_INFO("Jacobian size: %ld x %ld", jacobian.rows(), jacobian.cols());
-    ROS_INFO("Jacobian dot size: %ld x %ld", jacobian_dot.rows(), jacobian_dot.cols());
-    ROS_INFO("J size: %ld x %ld", J.rows(), J.cols());
-    ROS_INFO("J transpose size: %ld x %ld", J_transpose.rows(), J_transpose.cols());
-    ROS_INFO("J pseudo-inverse size: %ld x %ld", J_pseudo.rows(), J_pseudo.cols());
-    ROS_INFO("J transpose pseudo-inverse size: %ld x %ld", J_transpose_pseudo.rows(), J_transpose_pseudo.cols());
-    ROS_INFO("Jacobian dot size: %ld x %ld", J_dot.rows(), J_dot.cols());
-    ROS_INFO("Mass matrix size: %ld x %ld", M.rows(), M.cols());
-    ROS_INFO("Inverse mass matrix size: %ld x %ld", M_inverse.rows(), M_inverse.cols());
-    ROS_INFO("NLE size: %ld", h.size());
+    	ROS_INFO("Jacobian dot size: %ld x %ld", jacobian_dot.rows(), jacobian_dot.cols());
+    	ROS_INFO("J size: %ld x %ld", J.rows(), J.cols());
+    	ROS_INFO("J transpose size: %ld x %ld", J_transpose.rows(), J_transpose.cols());
+    	ROS_INFO("J pseudo-inverse size: %ld x %ld", J_pseudo.rows(), J_pseudo.cols());
+    	ROS_INFO("J transpose pseudo-inverse size: %ld x %ld", J_transpose_pseudo.rows(), J_transpose_pseudo.cols());
+    	ROS_INFO("Jacobian dot size: %ld x %ld", J_dot.rows(), J_dot.cols());
+    	ROS_INFO("Mass matrix size: %ld x %ld", M.rows(), M.cols());
+    	ROS_INFO("Inverse mass matrix size: %ld x %ld", M_inverse.rows(), M_inverse.cols());
+    	ROS_INFO("NLE size: %ld", h.size());
 			ROS_INFO("Receive feedback");
 
 			// Compute the end-effector pose and twist
 			geometry_msgs::Pose pose_msg;
 	    geometry_msgs::Twist twist_msg;
       pinocchio::SE3 end_effector_pose = data.oMi[end_effector_id];
+
+			x_fbk(0) = end_effector_pose.translation().x(); 
+			x_fbk(1) = end_effector_pose.translation().y();
+			x_fbk(2) = end_effector_pose.translation().z();
 
       // Set pose
       pose_msg.position.x = end_effector_pose.translation().x();
@@ -243,6 +247,10 @@ class ControlNode
       // Set twist
       Eigen::VectorXd end_effector_twist = J * q_dot_fbk;
 
+			x_dot_fbk(0) = end_effector_twist[0]; 
+			x_dot_fbk(1) = end_effector_twist[1];
+			x_dot_fbk(2) = end_effector_twist[2];
+
       twist_msg.linear.x = end_effector_twist[0];
       twist_msg.linear.y = end_effector_twist[1];
       twist_msg.linear.z = end_effector_twist[2];
@@ -258,9 +266,9 @@ class ControlNode
 		// Reference pose callback
 		void referencePoseCallback(const geometry_msgs::Pose msg)
 		{
-			q_ref(0) = msg.position.x;
-    	q_ref(1) = msg.position.y;
-    	q_ref(2) = msg.position.z;	
+			x_ref(0) = msg.position.x;
+    	x_ref(1) = msg.position.y;
+    	x_ref(2) = msg.position.z;	
 
 			received_reference_pose = true;
 		}
@@ -268,9 +276,9 @@ class ControlNode
 		// Reference twist callback
 		void referenceTwistCallback(const geometry_msgs::Twist msg)
 		{
-			q_dot_ref(0) = msg.linear.x;
-			q_dot_ref(1) = msg.linear.y;
-			q_dot_ref(2) = msg.linear.z;
+			x_dot_ref(0) = msg.linear.x;
+			x_dot_ref(1) = msg.linear.y;
+			x_dot_ref(2) = msg.linear.z;
 	
 			received_reference_twist = true;
 		}
@@ -291,15 +299,16 @@ class ControlNode
 
 		void publishTorque()
 		{
+			ROS_INFO("Publish torque");
 			if (with_redundancy)
 			{
-				publishTorqueWithRedundancy();
 				ROS_INFO("Published torque with redundancy");
+				publishTorqueWithRedundancy();
 			}
 			else
 			{
-				publishTorqueWithoutRedundancy();
 				ROS_INFO("Published torque without redundancy");
+				publishTorqueWithoutRedundancy();
 			}
 		}
 
@@ -342,19 +351,25 @@ class ControlNode
 				Eigen::VectorXd x_dot2_cmd = computeXDot2Command();
 
 				Eigen::VectorXd tau_cmd = J_transpose * ((wedge * x_dot2_cmd) + bias);
-
-				Eigen::VectorXd P = I - (J_transpose * (J * M_inverse * J_transpose).inverse() * J * M_inverse);
+				ROS_INFO("Computed tau_cmd");
+	
+				Eigen::VectorXd P = computeB();
+				ROS_INFO("Computed P");
 				Eigen::VectorXd tau_joint = computeTauJoint();
+				ROS_INFO("Computed tau_joint");
 
 				Eigen::VectorXd tau_null = P * tau_joint;
+				ROS_INFO("Computed tau_null");
 
 				Eigen::VectorXd tau_total = tau_cmd + tau_null;
+				ROS_INFO("Computed tau_total");
 			} catch (const std::exception &e)
 			{
 				ROS_WARN("Matrix operation failed: %s", e.what());
 				return;
 			}
-
+			
+			ROS_INFO("Finish computing...");
 			std_msgs::Float64MultiArray torque_msg;
 			torque_msg.data.resize(tau_total.size());
 			for (int i = 0; i < tau_total.size(); ++i) {
@@ -362,24 +377,71 @@ class ControlNode
 			}
 
 			torque_publisher.publish(torque_msg);
+			ROS_INFO("Publish");
 		}
 
 		Eigen::MatrixXd computeWedge()
 		{	
 			Eigen::MatrixXd wedge = J_transpose_pseudo * M * J_pseudo;
+			ROS_INFO("Computed wedge");
+			ROS_INFO("Wedge matrix size: %ld x %ld", wedge.rows(), wedge.cols());
 			return wedge;
 		}
 
 		Eigen::MatrixXd computeBias(const Eigen::MatrixXd& wedge)
 		{		
 			Eigen::MatrixXd bias = (J_transpose_pseudo * h) - (wedge * J_dot * q_dot_fbk);
+			ROS_INFO("Computed bias");
+			ROS_INFO("Bias matrix size: %ld x %ld", bias.rows(), bias.cols());
 			return bias;
 		}
 
 		Eigen::VectorXd computeXDot2Command()
 		{
 			Eigen::VectorXd x_dot2_cmd = (d_effector * (x_dot_ref - x_dot_fbk)) + (k_effector * (x_ref - x_fbk));
+			ROS_INFO("x_dot_ref size: %ld", x_dot_ref.size());
+    	ROS_INFO("x_dot_fbk size: %ld", x_dot_fbk.size());
+    	ROS_INFO("x_ref size: %ld", x_ref.size());
+    	ROS_INFO("x_fbk size: %ld", x_fbk.size());
+			ROS_INFO("d_effector: %f", d_effector);
+			ROS_INFO("k_effector: %f", k_effector);
+			ROS_INFO("Computed x_dot2_cmd");
+			ROS_INFO("x_dot2_cmd matrix size: %ld", x_dot2_cmd.size());
 			return x_dot2_cmd;
+		}
+
+		Eigen::MatrixXd computeP()
+		{
+			ROS_INFO("J size: %d x %d", J.rows(), J.cols());
+			ROS_INFO("M_inverse size: %d x %d", M_inverse.rows(), M_inverse.cols());
+			ROS_INFO("J_transpose size: %d x %d", J_transpose.rows(), J_transpose.cols());
+			ROS_INFO("I size: %d x %d", I.rows(), I.cols());
+
+			Eigen::MatrixXd J_M_inv = J * M_inverse;
+			ROS_INFO("J * M_inverse size: %d x %d", J_M_inv.rows(), J_M_inv.cols());
+
+			Eigen::MatrixXd J_M_inv_JT = J_M_inv * J_transpose;
+			ROS_INFO("J * M_inverse * J_transpose size: %d x %d", J_M_inv_JT.rows(), J_M_inv_JT.cols());
+
+			if (J_M_inv_JT.rows() != J_M_inv_JT.cols()) {
+    		ROS_ERROR("Matrix J * M_inverse * J_transpose is not square and cannot be inverted.");
+			} else {
+    		Eigen::MatrixXd J_M_inv_JT_inv = J_M_inv_JT.inverse();
+    		ROS_INFO("Inverse of (J * M_inverse * J_transpose) size: %d x %d", J_M_inv_JT_inv.rows(), J_M_inv_JT_inv.cols());
+
+    		Eigen::MatrixXd JT_J_M_inv_JT_inv = J_transpose * J_M_inv_JT_inv;
+    		ROS_INFO("J_transpose * (J * M_inverse * J_transpose).inverse() size: %d x %d", JT_J_M_inv_JT_inv.rows(), JT_J_M_inv_JT_inv.cols());
+
+    		Eigen::MatrixXd JT_J_M_inv_JT_inv_J_M_inv = JT_J_M_inv_JT_inv * J_M_inv;
+    		ROS_INFO("J_transpose * (J * M_inverse * J_transpose).inverse() * J * M_inverse size: %d x %d", JT_J_M_inv_JT_inv_J_M_inv.rows(), JT_J_M_inv_JT_inv_J_M_inv.cols());
+
+    		if (I.rows() == JT_J_M_inv_JT_inv_J_M_inv.rows() && I.cols() == JT_J_M_inv_JT_inv_J_M_inv.cols()) {
+        	Eigen::MatrixXd P = I - JT_J_M_inv_JT_inv_J_M_inv;
+        	ROS_INFO("Final P size: %d x %d", P.rows(), P.cols());
+    		} else {
+        	ROS_ERROR("Dimension mismatch in final subtraction: I and the computed matrix have different sizes.");
+    		}
+			}
 		}
 
 		Eigen::VectorXd computeTauJoint()
