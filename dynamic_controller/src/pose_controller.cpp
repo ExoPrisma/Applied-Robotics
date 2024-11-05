@@ -412,32 +412,32 @@ class ControlNode
 
 		Eigen::MatrixXd computeP()
 		{
-			ROS_INFO("J size: %d x %d", J.rows(), J.cols());
-			ROS_INFO("M_inverse size: %d x %d", M_inverse.rows(), M_inverse.cols());
-			ROS_INFO("J_transpose size: %d x %d", J_transpose.rows(), J_transpose.cols());
-			ROS_INFO("I size: %d x %d", I.rows(), I.cols());
+			ROS_INFO("J size: %ld x %ld", J.rows(), J.cols());
+			ROS_INFO("M_inverse size: %ld x %ld", M_inverse.rows(), M_inverse.cols());
+			ROS_INFO("J_transpose size: %ld x %ld", J_transpose.rows(), J_transpose.cols());
+			ROS_INFO("I size: %ld x %ld", I.rows(), I.cols());
 
 			Eigen::MatrixXd J_M_inv = J * M_inverse;
-			ROS_INFO("J * M_inverse size: %d x %d", J_M_inv.rows(), J_M_inv.cols());
+			ROS_INFO("J * M_inverse size: %ld x %ld", J_M_inv.rows(), J_M_inv.cols());
 
 			Eigen::MatrixXd J_M_inv_JT = J_M_inv * J_transpose;
-			ROS_INFO("J * M_inverse * J_transpose size: %d x %d", J_M_inv_JT.rows(), J_M_inv_JT.cols());
+			ROS_INFO("J * M_inverse * J_transpose size: %ld x %ld", J_M_inv_JT.rows(), J_M_inv_JT.cols());
 
 			if (J_M_inv_JT.rows() != J_M_inv_JT.cols()) {
     		ROS_ERROR("Matrix J * M_inverse * J_transpose is not square and cannot be inverted.");
 			} else {
     		Eigen::MatrixXd J_M_inv_JT_inv = J_M_inv_JT.inverse();
-    		ROS_INFO("Inverse of (J * M_inverse * J_transpose) size: %d x %d", J_M_inv_JT_inv.rows(), J_M_inv_JT_inv.cols());
+    		ROS_INFO("Inverse of (J * M_inverse * J_transpose) size: %ld x %ld", J_M_inv_JT_inv.rows(), J_M_inv_JT_inv.cols());
 
     		Eigen::MatrixXd JT_J_M_inv_JT_inv = J_transpose * J_M_inv_JT_inv;
-    		ROS_INFO("J_transpose * (J * M_inverse * J_transpose).inverse() size: %d x %d", JT_J_M_inv_JT_inv.rows(), JT_J_M_inv_JT_inv.cols());
+    		ROS_INFO("J_transpose * (J * M_inverse * J_transpose).inverse() size: %ld x %ld", JT_J_M_inv_JT_inv.rows(), JT_J_M_inv_JT_inv.cols());
 
     		Eigen::MatrixXd JT_J_M_inv_JT_inv_J_M_inv = JT_J_M_inv_JT_inv * J_M_inv;
-    		ROS_INFO("J_transpose * (J * M_inverse * J_transpose).inverse() * J * M_inverse size: %d x %d", JT_J_M_inv_JT_inv_J_M_inv.rows(), JT_J_M_inv_JT_inv_J_M_inv.cols());
+    		ROS_INFO("J_transpose * (J * M_inverse * J_transpose).inverse() * J * M_inverse size: %ld x %ld", JT_J_M_inv_JT_inv_J_M_inv.rows(), JT_J_M_inv_JT_inv_J_M_inv.cols());
 
     		if (I.rows() == JT_J_M_inv_JT_inv_J_M_inv.rows() && I.cols() == JT_J_M_inv_JT_inv_J_M_inv.cols()) {
         	Eigen::MatrixXd P = I - JT_J_M_inv_JT_inv_J_M_inv;
-        	ROS_INFO("Final P size: %d x %d", P.rows(), P.cols());
+        	ROS_INFO("Final P size: %ld x %ld", P.rows(), P.cols());
     		} else {
         	ROS_ERROR("Dimension mismatch in final subtraction: I and the computed matrix have different sizes.");
     		}
