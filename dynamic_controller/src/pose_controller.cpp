@@ -59,7 +59,7 @@ class ControlNode
 			// Publishers
     	pose_publisher = node_handle.advertise<geometry_msgs::Pose>(feedback_pose_topic, 3);
     	twist_publisher = node_handle.advertise<geometry_msgs::Twist>(feedback_twist_topic, 3);
-			torque_publisher = node_handle.advertise<std_msgs::Float64MultiArray>(joint_torque_topic, 3);
+			torque_publisher = node_handle.advertise<std_msgs::Float64MultiArray>(joint_torque_topic, 3);	
 		}
 
 		// Run method
@@ -176,8 +176,8 @@ class ControlNode
 
 		Eigen::VectorXd q_fbk;
 		Eigen::VectorXd q_dot_fbk;
-		Eigen::VectorXd q_ref;
-		Eigen::VectorXd q_dot_ref;
+		Eigen::VectorXd q_ref = Eigen::VectorXd::Zero(3);
+		Eigen::VectorXd q_dot_ref = Eigen::VectorXd::Zero(3);
 
 		Eigen::VectorXd x_fbk;
 		Eigen::VectorXd x_dot_fbk;
@@ -210,6 +210,18 @@ class ControlNode
 			h  = data.nle;
 			
 			received_feedback = true;
+			ROS_INFO("Joint: %d", dim_joints);
+			ROS_INFO("Jacobian size: %ld x %ld", jacobian.rows(), jacobian.cols());
+    ROS_INFO("Jacobian dot size: %ld x %ld", jacobian_dot.rows(), jacobian_dot.cols());
+    ROS_INFO("J size: %ld x %ld", J.rows(), J.cols());
+    ROS_INFO("J transpose size: %ld x %ld", J_transpose.rows(), J_transpose.cols());
+    ROS_INFO("J pseudo-inverse size: %ld x %ld", J_pseudo.rows(), J_pseudo.cols());
+    ROS_INFO("J transpose pseudo-inverse size: %ld x %ld", J_transpose_pseudo.rows(), J_transpose_pseudo.cols());
+    ROS_INFO("Jacobian dot size: %ld x %ld", J_dot.rows(), J_dot.cols());
+    ROS_INFO("Mass matrix size: %ld x %ld", M.rows(), M.cols());
+    ROS_INFO("Inverse mass matrix size: %ld x %ld", M_inverse.rows(), M_inverse.cols());
+    ROS_INFO("NLE size: %ld", h.size());
+			ROS_INFO("Receive feedback");
 
 			// Compute the end-effector pose and twist
 			geometry_msgs::Pose pose_msg;
@@ -221,10 +233,10 @@ class ControlNode
       pose_msg.position.y = end_effector_pose.translation().y();
       pose_msg.position.z = end_effector_pose.translation().z();
 
-      ROS_INFO("Pose Position - x: %f, y: %f, z: %f",
-        pose_msg.position.x,
-        pose_msg.position.y,
-        pose_msg.position.z);
+      //ROS_INFO("Pose Position - x: %f, y: %f, z: %f",
+      //  pose_msg.position.x,
+      //  pose_msg.position.y,
+      //  pose_msg.position.z);
 
       pose_publisher.publish(pose_msg);
 
@@ -235,10 +247,10 @@ class ControlNode
       twist_msg.linear.y = end_effector_twist[1];
       twist_msg.linear.z = end_effector_twist[2];
 
-      ROS_INFO("Twist Position - x: %f, y: %f, z: %f",
-        twist_msg.linear.x,
-        twist_msg.linear.y,
-        twist_msg.linear.z);
+      //ROS_INFO("Twist Position - x: %f, y: %f, z: %f",
+      //  twist_msg.linear.x,
+      //  twist_msg.linear.y,
+      //  twist_msg.linear.z);
 
       twist_publisher.publish(twist_msg);
 		}
@@ -246,15 +258,19 @@ class ControlNode
 		// Reference pose callback
 		void referencePoseCallback(const geometry_msgs::Pose msg)
 		{
-			q_ref << msg.position.x, msg.position.y, msg.position.z;			
-			
+			q_ref(0) = msg.position.x;
+    	q_ref(1) = msg.position.y;
+    	q_ref(2) = msg.position.z;	
+
 			received_reference_pose = true;
 		}
 
 		// Reference twist callback
 		void referenceTwistCallback(const geometry_msgs::Twist msg)
 		{
-			q_dot_ref << msg.linear.x, msg.linear.y, msg.linear.z;
+			q_dot_ref(0) = msg.linear.x;
+			q_dot_ref(1) = msg.linear.y;
+			q_dot_ref(2) = msg.linear.z;
 	
 			received_reference_twist = true;
 		}

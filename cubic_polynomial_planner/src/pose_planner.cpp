@@ -33,14 +33,14 @@ class PlannerNode
 				if (!is_initialized)
 				{
 					pose_publisher.publish(current_pose);
-					ROS_INFO("Published default pose: [%f, %f, %f] with orientation [%f, %f, %f, %f]",
-        		current_pose.position.x,
-        		current_pose.position.y,
-        		current_pose.position.z,
-        		current_pose.orientation.x,
-        		current_pose.orientation.y,
-        		current_pose.orientation.z,
-        		current_pose.orientation.w);
+					//ROS_INFO("Published default pose: [%f, %f, %f] with orientation [%f, %f, %f, %f]",
+        	//	current_pose.position.x,
+        	//	current_pose.position.y,
+        	//	current_pose.position.z,
+        	//	current_pose.orientation.x,
+        	//	current_pose.orientation.y,
+        	//	current_pose.orientation.z,
+        	//	current_pose.orientation.w);
 				}
 
         while(is_moving)
@@ -153,15 +153,15 @@ class PlannerNode
       published_pose.orientation = final_pose.orientation;
 
       pose_publisher.publish(published_pose);
-      ROS_INFO("Published pose: [%f, %f, %f] with orientation [%f, %f, %f, %f] at time %f",
-        target_pose[0],
-        target_pose[1],
-        target_pose[2],
-        final_pose.orientation.x,
-        final_pose.orientation.y,
-        final_pose.orientation.z,
-        final_pose.orientation.w,
-        t);
+      //ROS_INFO("Published pose: [%f, %f, %f] with orientation [%f, %f, %f, %f] at time %f",
+      //  target_pose[0],
+      //  target_pose[1],
+      //  target_pose[2],
+      //  final_pose.orientation.x,
+      //  final_pose.orientation.y,
+      //  final_pose.orientation.z,
+      //  final_pose.orientation.w,
+      //  t);
 
       geometry_msgs::Twist published_twist;
       published_twist.linear.x = target_twist[0];
@@ -169,11 +169,11 @@ class PlannerNode
       published_twist.linear.z = target_twist[2];
 
       twist_publisher.publish(published_twist);
-      ROS_INFO("Published twist: [%f, %f, %f] at time %f", 
-        target_twist[0],
-        target_twist[1],  
-        target_twist[2],
-        t);
+      //ROS_INFO("Published twist: [%f, %f, %f] at time %f", 
+      //  target_twist[0],
+      //  target_twist[1],  
+      //  target_twist[2],
+      //  t);
     }
 
 		// Get parameter helper functions
