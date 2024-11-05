@@ -53,8 +53,8 @@ class ControlNode
     	velocity_subscriber = node_handle.subscribe(reference_velocity_topic, 3, &ControlNode::referenceVelocityCallback, this);
 
 			// Servers
-			set_joint_server = node_handle.advertiseService("/joint_controller/set_joint_pd", &ControlNode::setJointPDCallback, this);		
-			set_effector_server = node_handle.advertiseService("/joint_controller/set_linear_pd", &ControlNode::setEffectorPDCallback, this);		
+			set_joint_server = node_handle.advertiseService("/pose_controller/set_joint_pd", &ControlNode::setJointPDCallback, this);		
+			set_effector_server = node_handle.advertiseService("/pose_controller/set_linear_pd", &ControlNode::setEffectorPDCallback, this);		
 
 			// Publishers
     	pose_publisher = node_handle.advertise<geometry_msgs::Pose>(feedback_pose_topic, 3);
