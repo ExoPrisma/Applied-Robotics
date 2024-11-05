@@ -353,7 +353,7 @@ class ControlNode
 				Eigen::VectorXd tau_cmd = J_transpose * ((wedge * x_dot2_cmd) + bias);
 				ROS_INFO("Computed tau_cmd");
 	
-				Eigen::VectorXd P = computeB();
+				Eigen::VectorXd P = computeP();
 				ROS_INFO("Computed P");
 				Eigen::VectorXd tau_joint = computeTauJoint();
 				ROS_INFO("Computed tau_joint");
