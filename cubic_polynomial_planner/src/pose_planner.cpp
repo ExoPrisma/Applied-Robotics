@@ -206,6 +206,7 @@ class PlannerNode
 			current_pose.position.x = default_translation[0];
 			current_pose.position.y = default_translation[1];
 			current_pose.position.z = default_translation[2];
+			ROS_INFO("x: %f, y: %f, z: %f", current_pose.position.x, current_pose.position.y, current_pose.position.z);
 
       return 0;
 		}

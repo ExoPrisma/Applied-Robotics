@@ -61,8 +61,10 @@ class ControllerNode
 
       while(ros::ok())
       {
+				ROS_INFO("Running");
 				if (received_feedback && received_reference_position && received_reference_velocity)
 				{
+					ROS_INFO("Publishing torque...");
 					publishTorque();	
 				}
         ros::spinOnce();
@@ -138,7 +140,7 @@ class ControllerNode
 			pinocchio::computeAllTerms(model, data, q_fbk, q_dot_fbk);
 			M  = data.M;
 			h  = data.nle;
-			
+			ROS_INFO("Received feedback");	
 			received_feedback = true;
 		}
 
@@ -146,6 +148,7 @@ class ControllerNode
 		void referencePositionCallback(const std_msgs::Float64MultiArray& msg)
 		{
 			q_ref = Eigen::Map<const Eigen::VectorXd>(msg.data.data(), msg.data.size());
+			ROS_INFO("Received referense position");
 			received_reference_position = true;
 		}
 		
@@ -153,6 +156,7 @@ class ControllerNode
 		void referenceVelocityCallback(const std_msgs::Float64MultiArray& msg)
 		{
 			q_dot_ref = Eigen::Map<const Eigen::VectorXd>(msg.data.data(), msg.data.size());
+			ROS_INFO("Received reference velocity");
 			received_reference_velocity = true;
 		}
 		

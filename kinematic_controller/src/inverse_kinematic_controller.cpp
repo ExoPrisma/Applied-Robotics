@@ -93,6 +93,9 @@ class ControllerNode
 
 		// End effector joint ID 
 		int end_effector_id;
+		
+		// Private variables
+		bool received_reference_velocity = false;
 	
 		// Feedback pose & twist
 		geometry_msgs::Pose pose_msg;
@@ -167,7 +170,10 @@ class ControllerNode
 		
 			if (with_redundancy) 
 			{
-				computeJointVelocityWithRedundancy(x_ref, x_fbk, jacobian);
+				if (received_reference_velocity)
+				{
+					computeJointVelocityWithRedundancy(x_ref, x_fbk, jacobian);
+				}
 			}
 			else
 			{
@@ -215,13 +221,15 @@ class ControllerNode
       Eigen::MatrixXd jacobian_linear = jacobian.topRows<3>();
       Eigen::MatrixXd jacobian_pseudo_inv = jacobian_linear.completeOrthogonalDecomposition().pseudoInverse();
 
+			ROS_INFO("Check one");
 			Eigen::VectorXd primary_joint_velocities = jacobian_pseudo_inv * v_ref;
 
 			Eigen::MatrixXd identity = Eigen::MatrixXd::Identity(jacobian.cols(), jacobian.cols());
   		Eigen::MatrixXd null_space_projector = identity - jacobian_pseudo_inv * jacobian_linear;
+			ROS_INFO("Check two");
 
 			Eigen::VectorXd joint_velocities = primary_joint_velocities + (null_space_projector * secondary_joint_velocities);
-
+			ROS_INFO("Check three");
       Eigen::VectorXd joint_positions = joint_position + (joint_velocities * (1.0 / publish_rate));
 			
 			std_msgs::Float64MultiArray joint_velocities_msg;
@@ -236,6 +244,7 @@ class ControllerNode
 		void referenceVelocityCallBack(const std_msgs::Float64MultiArray& msg)
 		{
 	    secondary_joint_velocities = Eigen::VectorXd::Map(msg.data.data(), msg.data.size());
+			received_reference_velocity = true;
 		}
 
 		// Get parameter helper functions
