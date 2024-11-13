@@ -1,0 +1,4 @@
+<launch>
+  <rosparam command="load" file="$(find highlevel_controller)/config/a5.yaml"/>
+	<rosparam command="load" file="$(find kortex_gazebo)/config/gen3_kinematics.yaml"/>
+</launch>

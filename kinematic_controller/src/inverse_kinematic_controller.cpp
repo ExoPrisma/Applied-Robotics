@@ -120,7 +120,7 @@ class ControllerNode
 			// Compute all kinematic terms
       pinocchio::computeAllTerms(model, data, joint_position, joint_velocity);
 
-      // Compute the end-effector pose and twist
+      // Compute the end-effector pose
       pinocchio::SE3 end_effector_pose = data.oMi[end_effector_id];
 
       // Set pose
@@ -128,29 +128,53 @@ class ControllerNode
       pose_msg.position.y = end_effector_pose.translation().y();
       pose_msg.position.z = end_effector_pose.translation().z();
 
-      ROS_INFO("Pose Position - x: %f, y: %f, z: %f",
-        pose_msg.position.x,
-        pose_msg.position.y,
-        pose_msg.position.z);
+			// Compute the end-effector pose orientation
+			Eigen::Quaterniond quaternion;
+			pinocchio::quaternion::assignQuaternion(quaternion, end_effector_pose.rotation());
+
+			pose_msg.orientation.x = quaternion.x();
+			pose_msg.orientation.y = quaternion.y();
+			pose_msg.orientation.z = quaternion.z();
+			pose_msg.orientation.w = quaternion.w();
+
+      //ROS_INFO("Pose Position - x: %f, y: %f, z: %f",
+      //  pose_msg.position.x,
+      //  pose_msg.position.y,
+      //  pose_msg.position.z);
+
+			//ROS_INFO("End-effector pose orientation - x: %f, y: %f, z: %f, w: %f",
+      //   pose_msg.orientation.x,
+      //   pose_msg.orientation.y,
+      //   pose_msg.orientation.z,
+      //   pose_msg.orientation.w);
 			
 			pose_publisher.publish(pose_msg);
 
-			// Set twist
+			// Compute the end-effector twist
       Eigen::MatrixXd jacobian(6, 7);
 
       pinocchio::getJointJacobian(model, data, end_effector_id, pinocchio::ReferenceFrame::LOCAL_WORLD_ALIGNED, jacobian);
-      Eigen::MatrixXd jacobian_linear = jacobian.topRows<3>();
 
-      Eigen::VectorXd end_effector_twist = jacobian_linear * joint_velocity;
+      Eigen::VectorXd end_effector_twist = jacobian * joint_velocity;
 			
+			// Set twist
       twist_msg.linear.x = end_effector_twist[0];
       twist_msg.linear.y = end_effector_twist[1];
       twist_msg.linear.z = end_effector_twist[2];
 
-			ROS_INFO("Twist Position - x: %f, y: %f, z: %f",
-				twist_msg.linear.x,
-				twist_msg.linear.y,
-				twist_msg.linear.z);
+			twist_msg.angular.x = end_effector_twist[3];	
+			twist_msg.angular.y = end_effector_twist[4];
+			twist_msg.angular.z = end_effector_twist[5];
+
+			//ROS_INFO("Twist Position - x: %f, y: %f, z: %f",
+			//	twist_msg.linear.x,
+			//	twist_msg.linear.y,
+			//	twist_msg.linear.z);
+
+			//ROS_INFO("Twist Orientation - x: %f, y: %f, z: %f",
+			//	twist_msg.angular.x,
+			//	twist_msg.angular.y,
+			//	twist_msg.angular.z);
 
       twist_publisher.publish(twist_msg);
 		}
@@ -165,8 +189,8 @@ class ControllerNode
       x_ref << msg->position.x, msg->position.y, msg->position.z;
 			x_fbk << pose_msg.position.x, pose_msg.position.y, pose_msg.position.z;			
 
-			ROS_INFO("x_ref: [%f, %f, %f]", x_ref(0), x_ref(1), x_ref(2));
-			ROS_INFO("x_fbk: [%f, %f, %f]", x_fbk(0), x_fbk(1), x_fbk(2));
+			//ROS_INFO("x_ref: [%f, %f, %f]", x_ref(0), x_ref(1), x_ref(2));
+			//ROS_INFO("x_fbk: [%f, %f, %f]", x_fbk(0), x_fbk(1), x_fbk(2));
 		
 			if (with_redundancy) 
 			{
@@ -221,15 +245,13 @@ class ControllerNode
       Eigen::MatrixXd jacobian_linear = jacobian.topRows<3>();
       Eigen::MatrixXd jacobian_pseudo_inv = jacobian_linear.completeOrthogonalDecomposition().pseudoInverse();
 
-			ROS_INFO("Check one");
 			Eigen::VectorXd primary_joint_velocities = jacobian_pseudo_inv * v_ref;
 
 			Eigen::MatrixXd identity = Eigen::MatrixXd::Identity(jacobian.cols(), jacobian.cols());
   		Eigen::MatrixXd null_space_projector = identity - jacobian_pseudo_inv * jacobian_linear;
-			ROS_INFO("Check two");
 
 			Eigen::VectorXd joint_velocities = primary_joint_velocities + (null_space_projector * secondary_joint_velocities);
-			ROS_INFO("Check three");
+
       Eigen::VectorXd joint_positions = joint_position + (joint_velocities * (1.0 / publish_rate));
 			
 			std_msgs::Float64MultiArray joint_velocities_msg;
