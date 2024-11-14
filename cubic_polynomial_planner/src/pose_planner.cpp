@@ -36,18 +36,20 @@ class PlannerNode
 
       while(ros::ok())
       {
-				pose_publisher.publish(current_pose);
-				//ROS_INFO("Published default pose: [%f, %f, %f] with orientation [%f, %f, %f, %f]",
-        //	current_pose.position.x,
-        //	current_pose.position.y,
-        //	current_pose.position.z,
-        //	current_pose.orientation.x,
-        //	current_pose.orientation.y,
-        //	current_pose.orientation.z,
-       	//	current_pose.orientation.w);
-
+				if(!is_moving)
+				{
+					pose_publisher.publish(final_pose);
+				}
         while(is_moving)
         {
+					//ROS_INFO("Published default pose: [%f, %f, %f] with orientation [%f, %f, %f, %f]",
+        	//	current_pose.position.x,
+        	//	current_pose.position.y,
+        	//	current_pose.position.z,
+        	//	current_pose.orientation.x,
+        	//	current_pose.orientation.y,
+        	//	current_pose.orientation.z,
+       		//	current_pose.orientation.w);
           publishPoseTwist();
         }
 
@@ -59,8 +61,7 @@ class PlannerNode
 		bool moveToCallback(highlevel_msgs::MoveTo::Request &req,
                         highlevel_msgs::MoveTo::Response &res)
     {
-
-      if(req.z <= 0)
+			if(req.z <= 0)
       {
         ROS_WARN("Invalid target position: z must be > 0");
         res.success = false;
@@ -70,12 +71,11 @@ class PlannerNode
       final_pose.position.x = req.x;
       final_pose.position.y = req.y;
       final_pose.position.z = req.z;
-      final_pose.orientation = current_pose.orientation;
       target_time = req.T;
 
       start_time = ros::Time::now().toSec();
 
-      is_moving = true;
+			is_moving = true;
 
       ROS_INFO("Received move_to call back");
       res.success = true;
@@ -88,13 +88,12 @@ class PlannerNode
 			tf2 ::Quaternion q;
 			q.setRPY(req.x, req.y, req.z);
 
-			final_pose.position = current_pose.position;
 			final_pose.orientation =  tf2 ::toMsg(q);	
 			target_time = req.T;
 
       start_time = ros::Time::now().toSec();
 
-      is_moving = true;
+			is_moving = true;
 
 			ROS_INFO("Received move_ori call back");
 			res.success = true;
@@ -145,7 +144,7 @@ class PlannerNode
       double current_time = ros::Time::now().toSec();
       double t = current_time - start_time;
 
-      if(t >= target_time)
+			if(t >= target_time)
       {
         is_moving = false;
         ROS_INFO("Has reached the target position");
@@ -175,7 +174,7 @@ class PlannerNode
 		
 			tf2::Quaternion published_q;
 
-			published_q = final_q.slerp(current_q, target_time);
+			published_q = final_q.slerp(current_q, t);
 
       geometry_msgs::Pose published_pose = current_pose;
       published_pose.position.x = target_pose[0];
@@ -185,13 +184,13 @@ class PlannerNode
 
       pose_publisher.publish(published_pose);
       //ROS_INFO("Published pose: [%f, %f, %f] with orientation [%f, %f, %f, %f] at time %f",
-      //  target_pose[0],
-      //  target_pose[1],
-      //  target_pose[2],
-      //  final_pose.orientation.x,
-      //  final_pose.orientation.y,
-      //  final_pose.orientation.z,
-      //  final_pose.orientation.w,
+      //  current_pose.position.x,
+      //  final_pose.position.y,
+      //  published_pose.position.z,
+      //  published_pose.orientation.x,
+      //  published_pose.orientation.y,
+      //  published_pose.orientation.z,
+      //  published_pose.orientation.w,
       //  t);
 
       geometry_msgs::Twist published_twist;
@@ -241,10 +240,10 @@ class PlannerNode
 				default_translation = {0.0, 0.0, 0.0};
 				return 1;
 			}
-			current_pose.position.x = default_translation[0];
-			current_pose.position.y = default_translation[1];
-			current_pose.position.z = default_translation[2];
-			//ROS_INFO("x: %f, y: %f, z: %f", current_pose.position.x, current_pose.position.y, current_pose.position.z);
+			final_pose.position.x = default_translation[0];
+			final_pose.position.y = default_translation[1];
+			final_pose.position.z = default_translation[2];
+			ROS_INFO("x: %f, y: %f, z: %f", final_pose.position.x, final_pose.position.y, final_pose.position.z);
 
 			if (!node_handle.getParam(default_orientation_topic, default_orientation))
 			{
@@ -255,8 +254,8 @@ class PlannerNode
 			tf2::Quaternion q;
 			q.setRPY(default_orientation[0], default_orientation[1], default_orientation[2]);
 
-			current_pose.orientation = tf2 ::toMsg(q);
-			//ROS_INFO("x: %f, y: %f, z: %f", w: "%f", current_pose.orientation.x, current_pose.orientation.y, current_pose.orientation.z, current_pose.orientation.w);
+			final_pose.orientation = tf2 ::toMsg(q);
+			ROS_INFO("x: %f, y: %f, z: %f, w: %f", final_pose.orientation.x, final_pose.orientation.y, final_pose.orientation.z, final_pose.orientation.w);
 
       return 0;
 		}

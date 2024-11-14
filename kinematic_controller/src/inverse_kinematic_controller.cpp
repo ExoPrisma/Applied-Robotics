@@ -33,6 +33,7 @@ class ControllerNode
 			getKAtt();
 			getMaxVelocity();
 			getWithRedundancy();
+			getWithOrientation();
 			getSubscriber();
 			getPublisher();
 
@@ -87,6 +88,7 @@ class ControllerNode
 		double max_velocity;
 
 		bool with_redundancy;
+		bool with_orientation;
 
 		std::string joint_states_topic, reference_pose_topic, reference_velocity_topic;
 		std::string feedback_pose_topic, feedback_twist_topic, joint_group_controller_command_topic;
@@ -182,12 +184,24 @@ class ControllerNode
 		// Reference pose callback function
     void referencePoseCallBack(const geometry_msgs::Pose::ConstPtr& msg)
     {
-      Eigen::VectorXd x_ref(3);
-      Eigen::VectorXd x_fbk(3);
+      Eigen::VectorXd x_ref;
+      Eigen::VectorXd x_fbk;
       Eigen::MatrixXd jacobian(6, 7);
 
-      x_ref << msg->position.x, msg->position.y, msg->position.z;
-			x_fbk << pose_msg.position.x, pose_msg.position.y, pose_msg.position.z;			
+			int size = with_orientation ? 6 : 3;
+    	x_ref.resize(size);
+    	x_fbk.resize(size);
+
+			if (with_orientation)
+			{
+      	x_ref << msg->position.x, msg->position.y, msg->position.z;
+				x_fbk << pose_msg.position.x, pose_msg.position.y, pose_msg.position.z;			
+			}
+			else 
+			{
+      	x_ref << msg->position.x, msg->position.y, msg->position.z;
+				x_fbk << pose_msg.position.x, pose_msg.position.y, pose_msg.position.z;				
+			}
 
 			//ROS_INFO("x_ref: [%f, %f, %f]", x_ref(0), x_ref(1), x_ref(2));
 			//ROS_INFO("x_fbk: [%f, %f, %f]", x_fbk(0), x_fbk(1), x_fbk(2));
@@ -216,8 +230,7 @@ class ControllerNode
 			}
 
       pinocchio::getJointJacobian(model, data, end_effector_id, pinocchio::ReferenceFrame::LOCAL_WORLD_ALIGNED, jacobian);
-      Eigen::MatrixXd jacobian_linear = jacobian.topRows<3>();
-      Eigen::MatrixXd jacobian_pseudo_inv = jacobian_linear.completeOrthogonalDecomposition().pseudoInverse();
+      Eigen::MatrixXd jacobian_pseudo_inv = jacobian.completeOrthogonalDecomposition().pseudoInverse();
 
       Eigen::VectorXd joint_velocities = jacobian_pseudo_inv * v_ref;
 			Eigen::VectorXd joint_positions = joint_position + (joint_velocities * (1.0 / publish_rate));
@@ -242,13 +255,12 @@ class ControllerNode
       }
 
       pinocchio::getJointJacobian(model, data, end_effector_id, pinocchio::ReferenceFrame::LOCAL_WORLD_ALIGNED, jacobian);
-      Eigen::MatrixXd jacobian_linear = jacobian.topRows<3>();
-      Eigen::MatrixXd jacobian_pseudo_inv = jacobian_linear.completeOrthogonalDecomposition().pseudoInverse();
+      Eigen::MatrixXd jacobian_pseudo_inv = jacobian.completeOrthogonalDecomposition().pseudoInverse();
 
 			Eigen::VectorXd primary_joint_velocities = jacobian_pseudo_inv * v_ref;
 
 			Eigen::MatrixXd identity = Eigen::MatrixXd::Identity(jacobian.cols(), jacobian.cols());
-  		Eigen::MatrixXd null_space_projector = identity - jacobian_pseudo_inv * jacobian_linear;
+  		Eigen::MatrixXd null_space_projector = identity - jacobian_pseudo_inv * jacobian;
 
 			Eigen::VectorXd joint_velocities = primary_joint_velocities + (null_space_projector * secondary_joint_velocities);
 
@@ -322,6 +334,16 @@ class ControllerNode
 			return 0;
 		}
 
+		int getWithOrientation()
+		{
+			if (!node_handle.getParam("/controller/with_orientation", with_orientation))
+			{
+				ROS_WARN("With orientation set to false.");
+				with_orientation = false;
+				return 1;
+			}
+			return 0;
+		}
 
 		int getSubscriber()
 		{
