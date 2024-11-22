@@ -8,15 +8,21 @@ add_definitions(-Wall -Werror)
 ## Find catkin macros and libraries
 find_package(catkin REQUIRED
   COMPONENTS        
+    kinematic_controller
 )
 
 
 catkin_package(
   INCLUDE_DIRS    
   LIBRARIES 
-  CATKIN_DEPENDS    
+  CATKIN_DEPENDS  
   DEPENDS
- 
+    kinematic_controller
+)
+
+include_directories(
+	include 
+  ${catkin_INCLUDE_DIRS}
 )
 
 #############

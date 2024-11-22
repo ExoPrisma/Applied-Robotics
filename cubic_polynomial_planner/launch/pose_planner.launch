@@ -2,8 +2,8 @@
 	<param name="/default_translation_topic" value="/gen3/linear/default" />
 	<param name="/default_orientation_topic" value="/gen3/angular/default" />
 	<param name="/feedback_pose_topic" value="/gen3/feedback/pose" />
-  <param name="/reference_pose_topic" value="/gen3/reference/pose" />
-  <param name="/reference_twist_topic" value="/gen3/reference/twist" />
+	<param name="/reference_pose_topic" value="/gen3/reference/pose" />
+	<param name="/reference_twist_topic" value="/gen3/reference/twist" />
 
 	<node		 name="pose_planner" pkg="cubic_polynomial_planner" type="pose_planner" output="screen" />
 </launch> 
