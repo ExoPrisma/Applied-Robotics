@@ -11,10 +11,13 @@
 
 #include <ros/ros.h>
 #include <Eigen/Dense>
+#include <Eigen/Geometry>
 #include <geometry_msgs/Pose.h>
 #include <geometry_msgs/Twist.h>
 #include <sensor_msgs/JointState.h>
 #include <std_msgs/Float64MultiArray.h>
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2/LinearMath/Matrix3x3.h>
 
 // Controller Class
 class ControllerNode
@@ -149,11 +152,10 @@ class ControllerNode
 			//  fbk_pose_msg.position.y,
 			//  fbk_pose_msg.position.z);
 
-			//ROS_INFO("End-effector pose orientation - x: %f, y: %f, z: %f, w: %f",
-			//   fbk_pose_msg.orientation.x,
-			//   fbk_pose_msg.orientation.y,
-			//   fbk_pose_msg.orientation.z,
-			//   fbk_pose_msg.orientation.w);
+			double roll, pitch, yaw;
+			tf2::Quaternion quaternion_tf(quaternion.x(), quaternion.y(), quaternion.z(), quaternion.w());
+			tf2::Matrix3x3(quaternion_tf).getRPY(roll, pitch, yaw);
+			ROS_WARN("End-effector pose orientation - roll: %f, pitch: %f, yaw: %f", roll, pitch, yaw);
 				
 			pose_publisher.publish(fbk_pose_msg);
 
@@ -252,7 +254,7 @@ class ControllerNode
 		{
 			v_ref.conservativeResize(6);	
 
-			pinocchio::SE3 pose_fbk = poseMsgToPinocchio(fbk_pose_msg);
+			pinocchio::SE3 pose_fbk = data.oMi[end_effector_id];
 			pinocchio::SE3 pose_ref = poseMsgToPinocchio(ref_pose_msg);
 
 			// Code from example
@@ -282,10 +284,10 @@ class ControllerNode
 				computeVRef(v_ref);
 			}
 
-			//if (v_ref.norm() > max_velocity)
-			//{
-			//	v_ref = v_ref * (max_velocity / v_ref.norm());
-			//}
+			if (v_ref.norm() > max_velocity)
+			{
+				v_ref = v_ref * (max_velocity / v_ref.norm());
+			}
 
 			Eigen::MatrixXd jacobian_pseudo_inv = jacobian.completeOrthogonalDecomposition().pseudoInverse();
 			Eigen::VectorXd joint_velocities = jacobian_pseudo_inv * v_ref;
@@ -315,15 +317,14 @@ class ControllerNode
 				computeVRef(v_ref);
 			}
 			
-			//if (v_ref.norm() > max_velocity)
-			//{
-			//	v_ref = v_ref * (max_velocity / v_ref.norm());
-			//}
+			if (v_ref.norm() > max_velocity)
+			{
+				v_ref = v_ref * (max_velocity / v_ref.norm());
+			}
 
       		Eigen::MatrixXd jacobian_pseudo_inv = jacobian.completeOrthogonalDecomposition().pseudoInverse();
 			//ROS_INFO("Size of jacobian_pseudo_inv: %ld x %ld", jacobian_pseudo_inv.rows(), jacobian_pseudo_inv.cols());
 
-			// Log the size of v_ref (VectorXd)
 			//ROS_INFO("Size of v_ref: %ld", v_ref.size());
 			Eigen::VectorXd primary_joint_velocities = jacobian_pseudo_inv * v_ref;
 

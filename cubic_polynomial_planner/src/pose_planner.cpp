@@ -94,6 +94,7 @@ class PlannerNode
 			start_time = ros::Time::now().toSec();
 
 			is_moving = true;
+			is_rotating = true;
 
 			ROS_INFO("Received move_ori call back");
 			res.success = true;
@@ -127,6 +128,7 @@ class PlannerNode
 		double target_time;
 
 		bool is_moving = false;
+		bool is_rotating = false;
 
 		// Reference pose
 		geometry_msgs::Pose current_pose;
@@ -144,10 +146,12 @@ class PlannerNode
 		{
 			double current_time = ros::Time::now().toSec();
 			double t = current_time - start_time;
+			double t_slerp = t / target_time;
 
 			if(t >= target_time)
 			{
 				is_moving = false;
+				is_rotating = false;
 				ROS_INFO("Has reached the target position");
 				return;
 			}
@@ -175,24 +179,35 @@ class PlannerNode
 		
 			tf2::Quaternion published_q;
 
-			published_q = final_q.slerp(current_q, t);
+			published_q = current_q.slerp(final_q, t_slerp);
 
 			geometry_msgs::Pose published_pose = current_pose;
 			published_pose.position.x = target_pose[0];
 			published_pose.position.y = target_pose[1];
 			published_pose.position.z = target_pose[2];
-			published_pose.orientation = tf2::toMsg(published_q);
+			if (is_rotating)
+			{
+				published_pose.orientation = tf2::toMsg(published_q);
+			}
 
 			pose_publisher.publish(published_pose);
-			//ROS_INFO("Published pose: [%f, %f, %f] with orientation [%f, %f, %f, %f] at time %f",
+			//ROS_INFO("Published pose: [%f, %f, %f] at time %f",
 			//  current_pose.position.x,
 			//  final_pose.position.y,
 			//  published_pose.position.z,
-			//  published_pose.orientation.x,
-			//  published_pose.orientation.y,
-			//  published_pose.orientation.z,
-			//  published_pose.orientation.w,
 			//  t);
+
+			// double r, p, y;
+			// tf2::Matrix3x3(current_q).getRPY(r, p, y);
+			// ROS_INFO("End-effector current pose orientation - roll: %f, pitch: %f, yaw: %f", r, p, y);
+
+			// double r1, p1, y1;
+			// tf2::Matrix3x3(final_q).getRPY(r1, p1, y1);
+			// ROS_INFO("End-effector final pose orientation - roll: %f, pitch: %f, yaw: %f", r1, p1, y1);
+
+			// double roll, pitch, yaw;
+			// tf2::Matrix3x3(published_q).getRPY(roll, pitch, yaw);
+			// ROS_WARN("End-effector pose orientation - roll: %f, pitch: %f, yaw: %f", roll, pitch, yaw);
 
 			geometry_msgs::Twist published_twist;
 			published_twist.linear.x = target_twist[0];
