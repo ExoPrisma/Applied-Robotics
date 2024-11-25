@@ -38,6 +38,7 @@ class PlannerNode
 				if(!is_moving)
 				{
 					pose_publisher.publish(final_pose);
+					twist_publisher.publish(final_twist);
 				}
 				while(is_moving)
 				{
@@ -130,6 +131,7 @@ class PlannerNode
 		// Reference pose
 		geometry_msgs::Pose current_pose;
     	geometry_msgs::Pose final_pose;	
+		geometry_msgs::Twist final_twist;
 
 		// Pose callback
 		void poseCallback(const geometry_msgs::Pose::ConstPtr& msg)
@@ -197,6 +199,10 @@ class PlannerNode
 			published_twist.linear.y = target_twist[1];
 			published_twist.linear.z = target_twist[2];
 
+			published_twist.angular.x = 0.0;
+			published_twist.angular.y = 0.0;
+			published_twist.angular.z = 0.0;
+
 			twist_publisher.publish(published_twist);
 			//ROS_INFO("Published twist: [%f, %f, %f] at time %f", 
 			//  target_twist[0],
@@ -242,7 +248,7 @@ class PlannerNode
 			final_pose.position.x = default_translation[0];
 			final_pose.position.y = default_translation[1];
 			final_pose.position.z = default_translation[2];
-			ROS_INFO("x: %f, y: %f, z: %f", final_pose.position.x, final_pose.position.y, final_pose.position.z);
+			// ROS_INFO("x: %f, y: %f, z: %f", final_pose.position.x, final_pose.position.y, final_pose.position.z);
 
 			if (!node_handle.getParam(default_orientation_topic, default_orientation))
 			{
@@ -254,7 +260,11 @@ class PlannerNode
 			q.setRPY(default_orientation[0], default_orientation[1], default_orientation[2]);
 
 			final_pose.orientation = tf2 ::toMsg(q);
-			ROS_INFO("x: %f, y: %f, z: %f, w: %f", final_pose.orientation.x, final_pose.orientation.y, final_pose.orientation.z, final_pose.orientation.w);
+			// ROS_INFO("x: %f, y: %f, z: %f, w: %f", final_pose.orientation.x, final_pose.orientation.y, final_pose.orientation.z, final_pose.orientation.w);
+
+			final_twist.linear.x = 0.0;
+			final_twist.linear.y = 0.0;
+			final_twist.linear.z = 0.0;
 
       		return 0;
 		}
