@@ -94,7 +94,6 @@ class PlannerNode
 			start_time = ros::Time::now().toSec();
 
 			is_moving = true;
-			is_rotating = true;
 
 			ROS_INFO("Received move_ori call back");
 			res.success = true;
@@ -127,18 +126,29 @@ class PlannerNode
 		double start_time;
 		double target_time;
 
+		bool initialized = false;
 		bool is_moving = false;
-		bool is_rotating = false;
 
 		// Reference pose
 		geometry_msgs::Pose current_pose;
     	geometry_msgs::Pose final_pose;	
 		geometry_msgs::Twist final_twist;
 
+		Eigen::VectorXd start_pose;
+		tf2::Quaternion current_q;
+
 		// Pose callback
 		void poseCallback(const geometry_msgs::Pose::ConstPtr& msg)
 		{
 			current_pose = *msg;
+			// if (!initialized)
+			// {
+				start_pose.resize(3);
+				start_pose << current_pose.position.x,
+						  	  current_pose.position.y,
+						  	  current_pose.position.z;
+				tf2::fromMsg(current_pose.orientation, current_q);
+			//} 
 		}
 
 		// Publish pose & twist
@@ -146,49 +156,40 @@ class PlannerNode
 		{
 			double current_time = ros::Time::now().toSec();
 			double t = current_time - start_time;
-			double t_slerp = t / target_time;
+			double t_norm = t / target_time;
 
 			if(t >= target_time)
 			{
 				is_moving = false;
-				is_rotating = false;
+				initialized = false;
 				ROS_INFO("Has reached the target position");
 				return;
 			}
 
-			Eigen::VectorXd start_pose(3);
 			Eigen::VectorXd end_pose(3);
-			tf2::Quaternion current_q;
 			tf2::Quaternion final_q;
+			tf2::Quaternion published_q;
 
-			start_pose << current_pose.position.x,
-						  current_pose.position.y,
-						  current_pose.position.z;
 			end_pose << final_pose.position.x,
 						final_pose.position.y,
 						final_pose.position.z;
-
+			
 			double pose_polynomial = ((3 * t * t) / (target_time * target_time)) - ((2 * t * t * t) / (target_time * target_time * target_time));
 			Eigen::VectorXd target_pose = start_pose + (pose_polynomial * (end_pose - start_pose));
 
 			double twist_polynomial = ((6 * t) / (target_time * target_time)) - ((6 * t * t) / (target_time * target_time * target_time));
 			Eigen::VectorXd target_twist = twist_polynomial * (end_pose - start_pose);
 
-			tf2::fromMsg(current_pose.orientation, current_q);
 			tf2::fromMsg(final_pose.orientation, final_q);
-		
-			tf2::Quaternion published_q;
 
-			published_q = current_q.slerp(final_q, t_slerp);
+			published_q = current_q.slerp(final_q, t_norm);
 
 			geometry_msgs::Pose published_pose = current_pose;
 			published_pose.position.x = target_pose[0];
 			published_pose.position.y = target_pose[1];
 			published_pose.position.z = target_pose[2];
-			if (is_rotating)
-			{
-				published_pose.orientation = tf2::toMsg(published_q);
-			}
+
+			published_pose.orientation = tf2::toMsg(published_q);
 
 			pose_publisher.publish(published_pose);
 			//ROS_INFO("Published pose: [%f, %f, %f] at time %f",
@@ -224,6 +225,8 @@ class PlannerNode
 			//  target_twist[1],  
 			//  target_twist[2],
 			//  t);
+
+			initialized = true;
 		}
 
 		// Get parameter helper functions
@@ -275,7 +278,8 @@ class PlannerNode
 			q.setRPY(default_orientation[0], default_orientation[1], default_orientation[2]);
 
 			final_pose.orientation = tf2 ::toMsg(q);
-			// ROS_INFO("x: %f, y: %f, z: %f, w: %f", final_pose.orientation.x, final_pose.orientation.y, final_pose.orientation.z, final_pose.orientation.w);
+			ROS_INFO("x: %f, y: %f, z: %f", default_orientation[0], default_orientation[1], default_orientation[2]);
+			ROS_INFO("x: %f, y: %f, z: %f, w: %f", final_pose.orientation.x, final_pose.orientation.y, final_pose.orientation.z, final_pose.orientation.w);
 
 			final_twist.linear.x = 0.0;
 			final_twist.linear.y = 0.0;

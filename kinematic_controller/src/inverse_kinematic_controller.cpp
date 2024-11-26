@@ -1,13 +1,17 @@
-#include <pinocchio/fwd.hpp>
-#include <pinocchio/math/rpy.hpp>
-#include <pinocchio/parsers/urdf.hpp>
-#include <pinocchio/spatial/explog.hpp>
-#include <pinocchio/multibody/data.hpp>
+// #include <pinocchio/fwd.hpp>
+// #include <pinocchio/math/rpy.hpp>
+// #include <pinocchio/spatial/se3.hpp>
+// #include <pinocchio/spatial/explog.hpp>
+
 #include <pinocchio/multibody/model.hpp>
-#include <pinocchio/algorithm/jacobian.hpp>
+#include <pinocchio/multibody/data.hpp>
+#include <pinocchio/parsers/urdf.hpp>
 #include <pinocchio/algorithm/kinematics.hpp>
-#include <pinocchio/algorithm/compute-all-terms.hpp>
+#include <pinocchio/algorithm/jacobian.hpp>
 #include <pinocchio/algorithm/joint-configuration.hpp>
+#include <pinocchio/algorithm/compute-all-terms.hpp>
+#include <pinocchio/algorithm/frames.hpp>
+
 
 #include <ros/ros.h>
 #include <Eigen/Dense>
@@ -88,7 +92,8 @@ class ControllerNode
 
 		double publish_rate;
     	double k_att;
-		double max_velocity;
+		double linear_max_velocity;
+		double angular_max_velocity;
 
 		bool with_redundancy;
 		bool with_orientation;
@@ -147,15 +152,18 @@ class ControllerNode
 			fbk_pose_msg.orientation.z = quaternion.z();
 			fbk_pose_msg.orientation.w = quaternion.w();
 
-			//ROS_INFO("Pose Position - x: %f, y: %f, z: %f",
+			// ROS_INFO("Pose Position - x: %f, y: %f, z: %f",
 			//  fbk_pose_msg.position.x,
 			//  fbk_pose_msg.position.y,
 			//  fbk_pose_msg.position.z);
 
-			double roll, pitch, yaw;
-			tf2::Quaternion quaternion_tf(quaternion.x(), quaternion.y(), quaternion.z(), quaternion.w());
-			tf2::Matrix3x3(quaternion_tf).getRPY(roll, pitch, yaw);
-			ROS_WARN("End-effector pose orientation - roll: %f, pitch: %f, yaw: %f", roll, pitch, yaw);
+			// double roll, pitch, yaw;
+			// tf2::Quaternion quaternion_tf;
+			// quaternion_tf = tf2::Quaternion(quaternion.x(), quaternion.y(), quaternion.z(), quaternion.w());
+			// ROS_WARN("End-effector pose quaternion - x: %f, y: %f, z: %f, w:%f", quaternion_tf.x(), quaternion_tf.y(), quaternion_tf.z(), quaternion_tf.w());
+			
+			// tf2::Matrix3x3(quaternion_tf).getRPY(roll, pitch, yaw);
+			// ROS_WARN("End-effector pose Euler Angles - roll: %f, pitch: %f, yaw: %f", roll, pitch, yaw);
 				
 			pose_publisher.publish(fbk_pose_msg);
 
@@ -175,15 +183,17 @@ class ControllerNode
 			fbk_twist_msg.angular.y = end_effector_twist[4];
 			fbk_twist_msg.angular.z = end_effector_twist[5];
 
-			//ROS_INFO("Twist Position - x: %f, y: %f, z: %f",
-			//	fbk_twist_msg.linear.x,
-			//	fbk_twist_msg.linear.y,
-			//	fbk_twist_msg.linear.z);
+			// ROS_INFO("Twist Position - x: %f, y: %f, z: %f",
+			// 	fbk_twist_msg.linear.x,
+			// 	fbk_twist_msg.linear.y,
+			// 	fbk_twist_msg.linear.z);
 
-			//ROS_INFO("Twist Orientation - x: %f, y: %f, z: %f",
-			//	fbk_twist_msg.angular.x,
-			//	fbk_twist_msg.angular.y,
-			//	fbk_twist_msg.angular.z);
+			// ROS_INFO("Twist Orientation - x: %f, y: %f, z: %f",
+			// 	fbk_twist_msg.angular.x,
+			// 	fbk_twist_msg.angular.y,
+			// 	fbk_twist_msg.angular.z);
+
+			// ROS_INFO("-----------------------------------------------");
 
 			twist_publisher.publish(fbk_twist_msg);
 		}
@@ -231,43 +241,30 @@ class ControllerNode
 			}
     	}
 
-		// Reference pose helper function
-		pinocchio::SE3 poseMsgToPinocchio(const geometry_msgs::Pose& pose_msg) {
-			// Extract translation
-			Eigen::Vector3d translation(pose_msg.position.x, pose_msg.position.y, pose_msg.position.z);
-
-			// Extract rotation (quaternion to rotation matrix)
-			Eigen::Quaterniond quaternion(pose_msg.orientation.w, 
-										  pose_msg.orientation.x, 
-										  pose_msg.orientation.y, 
-										  pose_msg.orientation.z);
-			quaternion.normalize();
-    		Eigen::Matrix3d rotation = quaternion.toRotationMatrix();
-
-			// Construct pinocchio::SE3
-			pinocchio::SE3 pinocchio_pose(rotation, translation);
-
-			return pinocchio_pose;
-		}
-
 		Eigen::VectorXd computeVRef(Eigen::VectorXd& v_ref)
 		{
 			v_ref.conservativeResize(6);	
 
 			pinocchio::SE3 pose_fbk = data.oMi[end_effector_id];
-			pinocchio::SE3 pose_ref = poseMsgToPinocchio(ref_pose_msg);
 
-			// Code from example
-			pinocchio::SE3 pose_err_	   = pose_fbk.inverse() * pose_ref ; 					// difference in T
-			Eigen::VectorXd err_pos_local  = pinocchio::log6(pose_err_).toVector() ;			// convert it to a vector in local frame
-			Eigen::VectorXd err_pos_world  = pose_fbk.rotation() * err_pos_local.tail<3>() ; 	// convert it to a vector in the world frame
-			//ROS_INFO_STREAM("orientation error from transformation " << err_pos_world.transpose() ) ;
+			Eigen::Quaterniond quaternion;
+			quaternion.x() = ref_pose_msg.orientation.x;
+			quaternion.y() = ref_pose_msg.orientation.y;
+			quaternion.z() = ref_pose_msg.orientation.z;
+			quaternion.w() = ref_pose_msg.orientation.w;
+
+    		Eigen::Matrix3d pose_ref_rotation = quaternion.toRotationMatrix();
 
 			// calculating orientation error from rotation matrix
-			Eigen::Matrix3d rot_err_ 	  = pose_fbk.rotation().transpose() * pose_ref.rotation() ; // difference in rotation
+			Eigen::Matrix3d rot_err_ 	  = pose_fbk.rotation().transpose() * pose_ref_rotation ; // difference in rotation
 			Eigen::Vector3d ang_vel_local = pinocchio::log3(rot_err_) ; 							// convert it to a vector in local frame
 			Eigen::Vector3d ang_vel_world = pose_fbk.rotation() * ang_vel_local ; 					// convert it to the world frame
-			//ROS_INFO_STREAM("orientation error from pinocchio rotation " << ang_vel_world.transpose() ) ;
+			//ROS_INFO_STREAM("orientation error from pinocchio rotation " << ang_vel_world.transpose() );
+			
+			if (ang_vel_world.norm() > angular_max_velocity)
+			{
+				ang_vel_world = ang_vel_world * (angular_max_velocity / ang_vel_world.norm());
+			}
 
 			//ROS_INFO("Size: %ld", ang_vel_world.size());
 			v_ref.tail(3) = ang_vel_world;
@@ -279,24 +276,20 @@ class ControllerNode
 		void computeJointVelocity(const Eigen::VectorXd& x_ref, const Eigen::VectorXd& x_fbk, const Eigen::MatrixXd& jacobian)
 		{
       		Eigen::VectorXd v_ref = k_att * (x_ref - x_fbk);
+			
+			if (v_ref.norm() > linear_max_velocity)
+			{
+				v_ref = v_ref * (linear_max_velocity / v_ref.norm());
+			}
+
 			if (with_orientation)
 			{
 				computeVRef(v_ref);
 			}
 
-			if (v_ref.norm() > max_velocity)
-			{
-				v_ref = v_ref * (max_velocity / v_ref.norm());
-			}
-
 			Eigen::MatrixXd jacobian_pseudo_inv = jacobian.completeOrthogonalDecomposition().pseudoInverse();
 			Eigen::VectorXd joint_velocities = jacobian_pseudo_inv * v_ref;
-			Eigen::VectorXd joint_positions = joint_position + (joint_velocities * (1.0 / publish_rate));
-	
-			if (joint_velocities.norm() > max_velocity)
-			{
-				joint_velocities = joint_velocities * (max_velocity / joint_velocities.norm());
-			}
+			Eigen::VectorXd joint_positions = joint_position + (joint_velocities * (1.0 / publish_rate));	
 
 			std_msgs::Float64MultiArray joint_velocities_msg;
 			joint_velocities_msg.data.resize(joint_positions.size());
@@ -311,32 +304,25 @@ class ControllerNode
 		void computeJointVelocityWithRedundancy(const Eigen::VectorXd& x_ref, const Eigen::VectorXd& x_fbk, const Eigen::MatrixXd& jacobian)
 		{	
 			Eigen::VectorXd v_ref = k_att * (x_ref - x_fbk);
+			
+			if (v_ref.norm() > linear_max_velocity)
+			{
+				v_ref = v_ref * (linear_max_velocity / v_ref.norm());
+			}
 
 			if (with_orientation)
 			{
 				computeVRef(v_ref);
 			}
-			
-			if (v_ref.norm() > max_velocity)
-			{
-				v_ref = v_ref * (max_velocity / v_ref.norm());
-			}
 
       		Eigen::MatrixXd jacobian_pseudo_inv = jacobian.completeOrthogonalDecomposition().pseudoInverse();
-			//ROS_INFO("Size of jacobian_pseudo_inv: %ld x %ld", jacobian_pseudo_inv.rows(), jacobian_pseudo_inv.cols());
 
-			//ROS_INFO("Size of v_ref: %ld", v_ref.size());
 			Eigen::VectorXd primary_joint_velocities = jacobian_pseudo_inv * v_ref;
 
 			Eigen::MatrixXd identity = Eigen::MatrixXd::Identity(jacobian.cols(), jacobian.cols());
   			Eigen::MatrixXd null_space_projector = identity - jacobian_pseudo_inv * jacobian;
 
 			Eigen::VectorXd joint_velocities = primary_joint_velocities + (null_space_projector * secondary_joint_velocities);
-
-			if (joint_velocities.norm() > max_velocity)
-			{
-				joint_velocities = joint_velocities * (max_velocity / joint_velocities.norm());
-			}
 
       		Eigen::VectorXd joint_positions = joint_position + (joint_velocities * (1.0 / publish_rate));
 			
@@ -389,9 +375,14 @@ class ControllerNode
 
 		int getMaxVelocity()
 		{
-			if (!node_handle.getParam("/gen3/linear/max_velocity", max_velocity))
+			if (!node_handle.getParam("/gen3/linear/max_velocity", linear_max_velocity))
 			{
-				ROS_WARN("Max velocity not set.");
+				ROS_WARN("Max linear velocity not set.");
+				return 1;
+			}
+			if (!node_handle.getParam("/gen3/angular/max_velocity", angular_max_velocity))
+			{
+				ROS_WARN("Max angular velocity not set.");
 				return 1;
 			}
 			return 0;
