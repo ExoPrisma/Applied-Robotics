@@ -1,8 +1,3 @@
-// #include <pinocchio/fwd.hpp>
-// #include <pinocchio/math/rpy.hpp>
-// #include <pinocchio/spatial/se3.hpp>
-// #include <pinocchio/spatial/explog.hpp>
-
 #include <pinocchio/multibody/model.hpp>
 #include <pinocchio/multibody/data.hpp>
 #include <pinocchio/parsers/urdf.hpp>
@@ -91,7 +86,8 @@ class ControllerNode
 		std::string urdf_filename;
 
 		double publish_rate;
-    	double k_att;
+    	double linear_k_att;
+		double angular_k_att;
 		double linear_max_velocity;
 		double angular_max_velocity;
 
@@ -261,12 +257,13 @@ class ControllerNode
 			Eigen::Vector3d ang_vel_world = pose_fbk.rotation() * ang_vel_local ; 					// convert it to the world frame
 			//ROS_INFO_STREAM("orientation error from pinocchio rotation " << ang_vel_world.transpose() );
 			
+			ang_vel_world = angular_k_att * ang_vel_world;
+
 			if (ang_vel_world.norm() > angular_max_velocity)
 			{
 				ang_vel_world = ang_vel_world * (angular_max_velocity / ang_vel_world.norm());
 			}
 
-			//ROS_INFO("Size: %ld", ang_vel_world.size());
 			v_ref.tail(3) = ang_vel_world;
 
 			return v_ref;
@@ -275,7 +272,7 @@ class ControllerNode
 		// Reference pose helper function
 		void computeJointVelocity(const Eigen::VectorXd& x_ref, const Eigen::VectorXd& x_fbk, const Eigen::MatrixXd& jacobian)
 		{
-      		Eigen::VectorXd v_ref = k_att * (x_ref - x_fbk);
+      		Eigen::VectorXd v_ref = linear_k_att * (x_ref - x_fbk);
 			
 			if (v_ref.norm() > linear_max_velocity)
 			{
@@ -303,7 +300,7 @@ class ControllerNode
 		// Reference pose helper function
 		void computeJointVelocityWithRedundancy(const Eigen::VectorXd& x_ref, const Eigen::VectorXd& x_fbk, const Eigen::MatrixXd& jacobian)
 		{	
-			Eigen::VectorXd v_ref = k_att * (x_ref - x_fbk);
+			Eigen::VectorXd v_ref = linear_k_att * (x_ref - x_fbk);
 			
 			if (v_ref.norm() > linear_max_velocity)
 			{
@@ -365,11 +362,16 @@ class ControllerNode
 
 		int getKAtt()
 		{
-			if (!node_handle.getParam("/gen3/linear/k_att", k_att))
+			if (!node_handle.getParam("/gen3/linear/k_att", linear_k_att))
 			{
-				ROS_WARN("K_att not set.");
+				ROS_WARN("Linear k_att not set.");
 				return 1;
 			}
+			if (!node_handle.getParam("/gen3/angular/k_att", angular_k_att))
+			{
+				ROS_WARN("Angular k_att not set.");
+				return 1;
+			}	
 			return 0;
 		}
 

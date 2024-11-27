@@ -141,14 +141,15 @@ class PlannerNode
 		void poseCallback(const geometry_msgs::Pose::ConstPtr& msg)
 		{
 			current_pose = *msg;
-			// if (!initialized)
-			// {
+			
+			if (!initialized)
+			{
 				start_pose.resize(3);
 				start_pose << current_pose.position.x,
 						  	  current_pose.position.y,
 						  	  current_pose.position.z;
 				tf2::fromMsg(current_pose.orientation, current_q);
-			//} 
+			} 
 		}
 
 		// Publish pose & twist
@@ -201,11 +202,9 @@ class PlannerNode
 			// double r, p, y;
 			// tf2::Matrix3x3(current_q).getRPY(r, p, y);
 			// ROS_INFO("End-effector current pose orientation - roll: %f, pitch: %f, yaw: %f", r, p, y);
-
 			// double r1, p1, y1;
 			// tf2::Matrix3x3(final_q).getRPY(r1, p1, y1);
 			// ROS_INFO("End-effector final pose orientation - roll: %f, pitch: %f, yaw: %f", r1, p1, y1);
-
 			// double roll, pitch, yaw;
 			// tf2::Matrix3x3(published_q).getRPY(roll, pitch, yaw);
 			// ROS_WARN("End-effector pose orientation - roll: %f, pitch: %f, yaw: %f", roll, pitch, yaw);
@@ -284,6 +283,9 @@ class PlannerNode
 			final_twist.linear.x = 0.0;
 			final_twist.linear.y = 0.0;
 			final_twist.linear.z = 0.0;
+			final_twist.angular.x = 0.0;
+			final_twist.angular.y = 0.0;
+			final_twist.angular.z = 0.0;
 
       		return 0;
 		}
