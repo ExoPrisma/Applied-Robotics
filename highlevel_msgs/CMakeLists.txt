@@ -9,13 +9,23 @@ add_definitions(-Wall -Werror)
 find_package(catkin REQUIRED
   COMPONENTS        
     genmsg
+    actionlib_msgs
+    message_generation
 )
 
 # Declare ROS service
 add_service_files(
-	FILES 
-	MoveTo.srv
-	SetKD.srv
+  FILES 
+    MoveTo.srv
+    SetKD.srv
+)
+
+# Declare ROS action
+add_action_files(
+  DIRECTORY 
+    action
+  FILES
+    PoseCommand.action
 )
 
 generate_messages(DEPENDENCIES )
@@ -24,6 +34,7 @@ catkin_package(
   INCLUDE_DIRS    
   LIBRARIES 
   CATKIN_DEPENDS    
+  	message_runtime
   DEPENDS
  
 )
