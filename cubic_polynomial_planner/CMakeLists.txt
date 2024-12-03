@@ -10,6 +10,7 @@ find_package(catkin REQUIRED
   COMPONENTS        
     roscpp
     std_msgs
+    actionlib
     highlevel_msgs
 )
 
@@ -22,6 +23,7 @@ catkin_package(
   DEPENDS
     roscpp
     std_msgs
+    actionlib
     highlevel_msgs
 )
 

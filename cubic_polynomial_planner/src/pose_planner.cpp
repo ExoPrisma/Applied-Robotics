@@ -5,9 +5,11 @@
 #include <geometry_msgs/Pose.h>
 #include <geometry_msgs/Twist.h>
 #include <highlevel_msgs/MoveTo.h>
-#include <tf2/LinearMath/Quaternion.h>
 #include <tf2/LinearMath/Matrix3x3.h>
+#include <tf2/LinearMath/Quaternion.h>
+#include <highlevel_msgs/MoveToAction.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include <actionlib/server/simple_action_server.h>
 
 class PlannerNode
 {
@@ -25,8 +27,12 @@ class PlannerNode
       		move_to_server = node_handle.advertiseService("/pose_planner/move_to", &PlannerNode::moveToCallback, this);
 			move_ori_server = node_handle.advertiseService("/pose_planner/move_ori", &PlannerNode::moveOriCallback, this);
 
+			action_server(node_handle, "/gen3/action_planner/pose", boost::bind(&PlannerNode::actionServerCallback, this, _1), false);
+
 			pose_publisher = node_handle.advertise<geometry_msgs::Pose>(reference_pose_topic, 3);
 			twist_publisher = node_handle.advertise<geometry_msgs::Twist>(reference_twist_topic, 3);
+
+			action_server.start();
 		}
 
 		void run()
@@ -100,6 +106,35 @@ class PlannerNode
 			return true;
 		}
 
+		void actionServerCallback(const highlevel_msgs::PoseCommandGoalConstPtr &goal)
+		{
+			if(goal->z <= 0)
+			{
+				ROS_WARN("Invalid target position: z must be > 0");
+				action_server.setAborted();
+            	return;
+			}
+
+			// Set final pose
+			tf2::Quaternion q;
+        	q.setRPY(goal->roll, goal->pitch, goal->yaw);
+			move_to_action_server_.setSucceeded() ;
+
+        	final_pose.position.x = goal->x;
+        	final_pose.position.y = goal->y;
+        	final_pose.position.z = goal->z;
+
+			target_time = goal->T;
+
+			start_time = ros::Time::now().toSec();	
+			is_moving = true;
+
+        	ROS_INFO("Received a new goal.");
+			highlevel_msgs::PoseCommand result;
+        	result.message = "Goal reached successfully.";
+			move_to_action_server_.setSucceeded() ;
+		}
+
 
 	private:
 		
@@ -110,6 +145,7 @@ class PlannerNode
 		ros::Subscriber pose_subscriber;
 		ros::ServiceServer move_to_server;
 		ros::ServiceServer move_ori_server;
+        actionlib::SimpleActionServer<highlevel_msgs::PoseCommandAction>;
 		ros::Publisher pose_publisher;
 		ros::Publisher twist_publisher;
 

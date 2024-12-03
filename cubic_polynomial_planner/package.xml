@@ -13,6 +13,7 @@
 
   <depend>roscpp</depend>
   <depend>std_msgs</depend>
+  <depend>actionlib</depend>
   <depend>highlevel_msgs</depend>
 
 	<build_depend>eigen3</build_depend>
