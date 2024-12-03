@@ -1,0 +1,7 @@
+<launch>
+    <rosparam command="load" file="$(find kortex_gazebo)/config/a6.yaml" />
+
+ 	<include file="$(find kinematic_controller)/launch/controller.launch"/>
+
+	<node name="client" pkg="highlevel_controller" type="pose_action_client" output="screen"/> 
+</launch>

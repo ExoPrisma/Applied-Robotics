@@ -28,12 +28,16 @@ add_action_files(
     PoseCommand.action
 )
 
-generate_messages(DEPENDENCIES )
+generate_messages(
+  DEPENDENCIES 
+    actionlib_msgs
+)
 
 catkin_package(
   INCLUDE_DIRS    
   LIBRARIES 
-  CATKIN_DEPENDS    
+  CATKIN_DEPENDS
+    actionlib_msgs   
   	message_runtime
   DEPENDS
  

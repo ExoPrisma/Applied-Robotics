@@ -1,21 +1,22 @@
-#include <ros/ros.h>
 #include <cmath>
 #include <tf/tf.h>
+#include <ros/ros.h>
 #include <Eigen/Dense>
 #include <geometry_msgs/Pose.h>
 #include <geometry_msgs/Twist.h>
 #include <highlevel_msgs/MoveTo.h>
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <tf2/LinearMath/Quaternion.h>
-#include <highlevel_msgs/MoveToAction.h>
+#include <highlevel_msgs/PoseCommandAction.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <actionlib/server/simple_action_server.h>
 
 class PlannerNode
 {
 	public:
-		
-		PlannerNode()
+		PlannerNode() : 
+			action_server(node_handle, "/gen3/action_planner/pose", 
+                      boost::bind(&PlannerNode::actionServerCallback, this, _1), false)
 		{
 			getPublishRate();
 			getDefault();
@@ -27,10 +28,10 @@ class PlannerNode
       		move_to_server = node_handle.advertiseService("/pose_planner/move_to", &PlannerNode::moveToCallback, this);
 			move_ori_server = node_handle.advertiseService("/pose_planner/move_ori", &PlannerNode::moveOriCallback, this);
 
-			action_server(node_handle, "/gen3/action_planner/pose", boost::bind(&PlannerNode::actionServerCallback, this, _1), false);
-
 			pose_publisher = node_handle.advertise<geometry_msgs::Pose>(reference_pose_topic, 3);
 			twist_publisher = node_handle.advertise<geometry_msgs::Twist>(reference_twist_topic, 3);
+			
+			// actionlib::SimpleActionServer<highlevel_msgs::PoseCommandAction> action_server(node_handle, "/gen3/action_planner/pose", boost::bind(&PlannerNode::actionServerCallback, this, _1), false);
 
 			action_server.start();
 		}
@@ -106,7 +107,7 @@ class PlannerNode
 			return true;
 		}
 
-		void actionServerCallback(const highlevel_msgs::PoseCommandGoalConstPtr &goal)
+		void actionServerCallback(const highlevel_msgs::PoseCommandGoalConstPtr& goal)
 		{
 			if(goal->z <= 0)
 			{
@@ -118,7 +119,7 @@ class PlannerNode
 			// Set final pose
 			tf2::Quaternion q;
         	q.setRPY(goal->roll, goal->pitch, goal->yaw);
-			move_to_action_server_.setSucceeded() ;
+			final_pose.orientation = tf2::toMsg(q);
 
         	final_pose.position.x = goal->x;
         	final_pose.position.y = goal->y;
@@ -130,9 +131,9 @@ class PlannerNode
 			is_moving = true;
 
         	ROS_INFO("Received a new goal.");
-			highlevel_msgs::PoseCommand result;
+			highlevel_msgs::PoseCommandResult result;
         	result.message = "Goal reached successfully.";
-			move_to_action_server_.setSucceeded() ;
+			action_server.setSucceeded();
 		}
 
 
@@ -145,7 +146,7 @@ class PlannerNode
 		ros::Subscriber pose_subscriber;
 		ros::ServiceServer move_to_server;
 		ros::ServiceServer move_ori_server;
-        actionlib::SimpleActionServer<highlevel_msgs::PoseCommandAction>;
+        actionlib::SimpleActionServer<highlevel_msgs::PoseCommandAction> action_server;
 		ros::Publisher pose_publisher;
 		ros::Publisher twist_publisher;
 

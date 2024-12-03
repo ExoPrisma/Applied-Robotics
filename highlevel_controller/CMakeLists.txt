@@ -25,6 +25,9 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
+add_executable(pose_action_client src/pose_action_client.cpp)
+target_link_libraries(pose_action_client ${catkin_LIBRARIES})
+
 #############
 ## Install ##
 #############

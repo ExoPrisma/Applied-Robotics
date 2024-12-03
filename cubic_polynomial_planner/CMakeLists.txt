@@ -20,11 +20,11 @@ catkin_package(
   INCLUDE_DIRS    
   LIBRARIES 
   CATKIN_DEPENDS    
-  DEPENDS
     roscpp
     std_msgs
     actionlib
     highlevel_msgs
+  DEPENDS
 )
 
 include_directories(
@@ -34,3 +34,15 @@ include_directories(
 
 add_executable(pose_planner src/pose_planner.cpp)
 target_link_libraries(pose_planner ${catkin_LIBRARIES})
+
+#############
+## Install ##
+#############
+
+# Mark cpp header files for installation
+install(
+  DIRECTORY include/${PROJECT_NAME}/
+  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+  FILES_MATCHING PATTERN "*.hpp"
+)
+
