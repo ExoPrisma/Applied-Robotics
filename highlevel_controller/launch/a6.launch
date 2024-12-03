@@ -1,5 +1,6 @@
 <launch>
     <rosparam command="load" file="$(find kortex_gazebo)/config/a6.yaml" />
+	<rosparam command="load" file="$(find kortex_gazebo)/config/gen3_kinematics.yaml"/>	
 
  	<include file="$(find kinematic_controller)/launch/controller.launch"/>
 
