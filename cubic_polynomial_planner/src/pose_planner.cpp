@@ -5,6 +5,7 @@
 #include <geometry_msgs/Pose.h>
 #include <geometry_msgs/Twist.h>
 #include <highlevel_msgs/MoveTo.h>
+#include <tf2/LinearMath/Scalar.h>
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <tf2/LinearMath/Quaternion.h>
 #include <highlevel_msgs/PoseCommandAction.h>
@@ -31,8 +32,6 @@ class PlannerNode
 			pose_publisher = node_handle.advertise<geometry_msgs::Pose>(reference_pose_topic, 3);
 			twist_publisher = node_handle.advertise<geometry_msgs::Twist>(reference_twist_topic, 3);
 			
-			// actionlib::SimpleActionServer<highlevel_msgs::PoseCommandAction> action_server(node_handle, "/gen3/action_planner/pose", boost::bind(&PlannerNode::actionServerCallback, this, _1), false);
-
 			action_server.start();
 		}
 
@@ -49,6 +48,20 @@ class PlannerNode
 				}
 				while(is_moving)
 				{
+					// highlevel_msgs::PoseCommandFeedback feedback;
+
+					// // Calculate the distance to the target position and orientation
+					// double distance_translation = euclideanDistance(current_pose, final_pose);
+					// double distance_orientation = orientationDistance(current_pose, final_pose);
+
+					// // Set up feedback
+					// feedback.distance_translation = distance_translation;
+					// feedback.distance_orientation = distance_orientation;
+					// feedback.time_elapsed = ros::Time::now().toSec() - start_time;
+
+					// // Publish feedback to the action server
+					// action_server.publishFeedback(feedback);
+
 					//ROS_INFO("Published default pose: [%f, %f, %f] with orientation [%f, %f, %f, %f]",
 					//	current_pose.position.x,
 					//	current_pose.position.y,
@@ -130,6 +143,34 @@ class PlannerNode
 			start_time = ros::Time::now().toSec();	
 			is_moving = true;
 
+			highlevel_msgs::PoseCommandFeedback feedback;
+
+			double distance_translation = euclideanDistance(current_pose, final_pose);
+			double distance_orientation = orientationDistance(current_pose, final_pose);
+
+			feedback.distance_translation = distance_translation;
+			feedback.distance_orientation = distance_orientation;
+			feedback.time_elapsed = ros::Time::now().toSec() - start_time;
+
+			while (distance_translation > 0.1)
+			{
+				if (action_server.isActive())
+				{
+					distance_translation = euclideanDistance(current_pose, final_pose);
+					distance_orientation = orientationDistance(current_pose, final_pose);
+
+					feedback.distance_translation = distance_translation;
+					feedback.distance_orientation = distance_orientation;
+					feedback.time_elapsed = ros::Time::now().toSec() - start_time;
+
+					action_server.publishFeedback(feedback);
+				}
+				else {
+					ROS_INFO("BREAK");
+					break;
+				}
+			}
+
         	ROS_INFO("Received a new goal.");
 			highlevel_msgs::PoseCommandResult result;
         	result.message = "Goal reached successfully.";
@@ -186,7 +227,27 @@ class PlannerNode
 						  	  current_pose.position.y,
 						  	  current_pose.position.z;
 				tf2::fromMsg(current_pose.orientation, current_q);
-			} 
+			}
+
+		}
+
+		// Compute euclidian distance
+		double euclideanDistance(const geometry_msgs::Pose& fbk_pose, const geometry_msgs::Pose& ref_pose) {
+			double dx = fbk_pose.position.x - ref_pose.position.x;
+			double dy = fbk_pose.position.y - ref_pose.position.y;
+			double dz = fbk_pose.position.z - ref_pose.position.z;
+
+			return std::sqrt(dx * dx + dy * dy + dz * dz);
+		}
+
+		double orientationDistance(const geometry_msgs::Pose& fbk_pose, const geometry_msgs::Pose& ref_pose) {
+			const geometry_msgs::Quaternion& fbk_quat = fbk_pose.orientation;
+			const geometry_msgs::Quaternion& ref_quat = ref_pose.orientation;
+
+			tf2::Quaternion tf2_fbk_quat(fbk_quat.x, fbk_quat.y, fbk_quat.z, fbk_quat.w);
+			tf2::Quaternion tf2_ref_quat(ref_quat.x, ref_quat.y, ref_quat.z, ref_quat.w);
+
+			return tf2::angleShortestPath(tf2_fbk_quat, tf2_ref_quat);
 		}
 
 		// Publish pose & twist
