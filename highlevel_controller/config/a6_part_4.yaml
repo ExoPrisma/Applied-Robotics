@@ -1,0 +1,24 @@
+action_list:
+
+  number_of_targets: 3
+
+  action_0:
+    action_type: pose    
+    translation: [0.4, 0.275, 0.5]
+    orientation: [0.0, 0.0, 0.0]
+    duration: 2.0
+     
+  action_1:
+    action_type: pose    
+    translation: [0.4, 0.275, 0.095]
+    orientation: [0.0, -0.1, 0.0]
+    duration: 2.0
+  
+  action_2:
+    action_type: pose    
+    translation: [0.4, -0.05, 0.09]
+    orientation: [0.0, -0.1, 0.0]
+    duration: 7.0
+
+  
+   
