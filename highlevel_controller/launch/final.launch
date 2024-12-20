@@ -1,0 +1,11 @@
+<launch>
+    <rosparam command="load" file="$(find highlevel_controller)/config/final.yaml"/>
+
+    <include file="$(find kortex_gazebo)/launch/gen3_kin_with_gripper.launch">
+        <arg name="world_name" value="$(find highlevel_controller)/worlds/final.world"/>
+    </include>
+
+ 	<include file="$(find kinematic_controller)/launch/controller.launch"/>
+
+	<node name="client" pkg="highlevel_controller" type="action_client" output="screen"/> 
+</launch>

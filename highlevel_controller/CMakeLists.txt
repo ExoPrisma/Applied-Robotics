@@ -9,6 +9,7 @@ add_definitions(-Wall -Werror)
 find_package(catkin REQUIRED
   COMPONENTS        
     kinematic_controller
+    control_msgs
 )
 
 
@@ -18,6 +19,7 @@ catkin_package(
   CATKIN_DEPENDS  
   DEPENDS
     kinematic_controller
+    control_msgs
 )
 
 include_directories(
@@ -25,8 +27,8 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
-add_executable(pose_action_client src/pose_action_client.cpp)
-target_link_libraries(pose_action_client ${catkin_LIBRARIES})
+add_executable(action_client src/action_client.cpp)
+target_link_libraries(action_client ${catkin_LIBRARIES})
 
 #############
 ## Install ##

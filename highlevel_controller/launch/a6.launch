@@ -3,5 +3,5 @@
 
  	<include file="$(find kinematic_controller)/launch/controller.launch"/>
 
-	<node name="client" pkg="highlevel_controller" type="pose_action_client" output="screen"/> 
+	<node name="client" pkg="highlevel_controller" type="action_client" output="screen"/> 
 </launch>

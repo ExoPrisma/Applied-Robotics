@@ -71,7 +71,7 @@ class JointPlannerNode
 		// Joint state callback
     void jointStatesCallback(const sensor_msgs::JointState::ConstPtr& msg)
     {
-      current_configurations = Eigen::Map<const Eigen::VectorXd>(msg->position.data(), msg->position.size());
+      current_configurations = Eigen::Map<const Eigen::VectorXd>(msg->position.data(), msg->position.size() - 1);
 
 			received_feedback = true;
     }
@@ -143,8 +143,9 @@ class JointPlannerNode
 			{
 				ROS_WARN("Default joints not set.");
 				return 1;
-			}			
+			}
       target_configurations = Eigen::Map<const Eigen::VectorXd>(default_configurations.data(), default_configurations.size());
+
 			return 0;
 		}
 	

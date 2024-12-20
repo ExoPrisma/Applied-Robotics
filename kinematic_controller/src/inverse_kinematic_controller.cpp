@@ -118,9 +118,9 @@ class ControllerNode
 		{
 			received_feedback_joint = true;
 
-			joint_position = Eigen::Map<const Eigen::VectorXd>(msg->position.data(), msg->position.size());
+			joint_position = Eigen::Map<const Eigen::VectorXd>(msg->position.data(), msg->position.size() - 1);
 					
-			Eigen::VectorXd joint_velocity = Eigen::Map<const Eigen::VectorXd>(msg->velocity.data(), msg->velocity.size());
+			Eigen::VectorXd joint_velocity = Eigen::Map<const Eigen::VectorXd>(msg->velocity.data(), msg->velocity.size() - 1);
 
 			computeKinematics(joint_velocity);
 		}
@@ -418,13 +418,13 @@ class ControllerNode
 			{
 				ROS_WARN("Joint states topic not set. Using default.");
 				joint_states_topic = "/gen3/joint_states";
-						return 1;
+				return 1;
 			}
 			if (!node_handle.getParam("/reference_pose_topic", reference_pose_topic))
 			{
 				ROS_WARN("Reference pose topic not set. Using default.");
 				reference_pose_topic = "/gen3/reference/pose";
-						return 1;
+				return 1;
 			}
 			if (!node_handle.getParam("/reference_velocity_topic", reference_velocity_topic))
 			{

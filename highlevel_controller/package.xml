@@ -13,5 +13,6 @@
   <buildtool_depend>catkin</buildtool_depend>
 
   <depend>kinematic_controller</depend>
+  <depend>control_msgs</depend>
 	
 </package>

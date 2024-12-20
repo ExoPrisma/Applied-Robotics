@@ -272,7 +272,14 @@ class PlannerNode
 			end_pose << final_pose.position.x,
 						final_pose.position.y,
 						final_pose.position.z;
-			
+
+			if (start_pose.size() != end_pose.size())
+			{
+				ROS_ERROR("Dimension mismatch: start_pose size = %ld, end_pose size = %ld",
+						start_pose.size(), end_pose.size());
+				return;
+			}
+					
 			double pose_polynomial = ((3 * t * t) / (target_time * target_time)) - ((2 * t * t * t) / (target_time * target_time * target_time));
 			Eigen::VectorXd target_pose = start_pose + (pose_polynomial * (end_pose - start_pose));
 

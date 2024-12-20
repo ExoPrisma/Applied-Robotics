@@ -1,0 +1,59 @@
+action_list:
+
+  number_of_targets: 8
+
+  # Move to cube position
+  action_0:
+    action_type: pose  
+    translation: [ 0.46, -0.1, 0.5 ]
+    orientation: [ 0.0, 0.0, 0.0 ]
+    duration: 5.0
+
+  # Move down to cube
+  action_1:
+    action_type: pose
+    translation: [ 0.46, -0.1, 0.46 ] 
+    orientation: [ 0.0, 0.0, 0.0 ]
+    duration: 5.0
+
+  # Open the gripper
+  action_2:
+    action_type: gripper
+    position: 0.0
+    effort: 1
+    duration: 5.0
+
+  # Reajust cube to avoid falling
+  action_3:
+    action_type: pose
+    translation: [ 0.46, -0.1, 0.46 ] 
+    orientation: [ 0.0, 0.0, 0.0 ]
+    duration: 5.0
+
+  # Close the gripper
+  action_4:
+    action_type: gripper
+    position: 0.625
+    effort: 1
+    duration: 5.0
+  
+  # Move up
+  action_5:
+    action_type: pose
+    translation: [ 0.46, -0.1, 0.6 ] 
+    orientation: [ 0.0, 0.0, 0.0 ]
+    duration: 5.0
+
+  # Move on top of cup
+  action_6:
+    action_type: pose
+    translation: [ 0.45, 0.1, 0.6 ]
+    orientation: [ 0.0, 0.0, 0.0 ]
+    duration: 5.0
+    
+  # Open the gripper
+  action_7:
+    action_type: gripper
+    position: 0.5
+    effort: 1
+    duration: 5.0
