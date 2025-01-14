@@ -27,3 +27,6 @@ The robots can put the cube in the cup 95% of the time.
 
 ## Video
 [MY VIDEO] https://youtu.be/vS24LuGVf_4
+
+## Debug
+export GAZEBO_RESOURCE_PATH=$GAZEBO_RESOURCE_PATH/path/to/ros_kortex/kortex_description
